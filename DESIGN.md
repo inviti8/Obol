@@ -209,15 +209,70 @@ wallet_funding_info()
   → Obol polls the balance and reports when it clears
 ```
 
-### The friction floor, stated honestly
+### There is no machine-to-machine exemption
 
-**First purchase requires KYC** — identity verification, a few minutes, a photo
-of an ID. That is regulatory and cannot be engineered away by anyone who is not
-themselves licensed. Subsequent top-ups are fast.
+Checked 2026-08-12. **KYC attaches to the human or company funding the wallet,
+not to the thing spending it.** The industry phrasing is blunt: software cannot
+undergo KYC, so providers run Customer Identification Program checks on whoever
+funds the agent instead.
 
-So the real shape is: *one interactive setup of a few minutes, then the agent
-spends autonomously within its caps, indefinitely.* That is a genuine and
-defensible claim. "Zero friction" is not, and should never appear in the copy.
+"Know Your Agent" is a real and active area - Visa's Trusted Agent Protocol,
+Cloudflare's bot-management layer, the Agentic Commerce Consortium, and
+Mastercard's Agent Pay for Machines (launched 2026-06-10). But it addresses
+*verifying an agent's identity when accepting payment from it*. It exempts nobody
+from identifying the funder. There is no AI carve-out and no sign one is coming.
+
+**The structural fact worth internalising: KYC is a property of the fiat
+boundary, not of crypto.** Once value is on chain, machines transact with no
+identity checks at all - which is exactly why x402 works. Fiat to crypto is the
+choke point and the only place regulation bites.
+
+That gives three honest ways to reduce it, and one dead end.
+
+### Reducing the KYC surface
+
+**1. Do not cross the fiat boundary at all - the v1 default.** If the user
+arrives holding USDC, Obol has *zero* KYC surface. Whatever verification happened
+did so at their exchange, and is neither our concern nor our liability. This
+serves crypto-native users completely and is the simplest thing that works.
+
+**2. Lowest-tier onramp for everyone else.** Tiers are real and lighter than
+first assumed: MoonPay's entry tier is **phone and email only - no ID document,
+no selfie - at roughly $50-150/day**, and Transak runs a comparable three-tier
+ladder. A $5-20 top-up sits inside the lightest tier, so realistic friction is
+about thirty seconds of contact verification rather than photographing a
+passport.
+
+Be precise about why. This is not a legal exemption for small amounts. It is a
+licensed provider exercising a risk-based approach *within* its own registration.
+The obligation exists; the provider is absorbing it.
+
+**3. Earn rather than buy - the actual endgame.** An agent paid in USDC for work
+it performed has crossed no fiat boundary and needs no verification. Circular at
+bootstrap, but it is where agentic commerce genuinely goes, and it is the only
+path that is KYC-free by construction rather than by threshold. Worth keeping
+open by design: an agent that can both spend and receive closes the loop without
+ever touching fiat.
+
+**Dead end: staking to earn the balance.** The regulatory instinct was right -
+earned value crosses no fiat boundary. The economics are not. Algorand requires
+**30,000 ALGO per account** (about $2,372) to be reward-eligible, yielding some
+$118/yr, and someone still has to buy that ALGO with KYC'd fiat. It relocates the
+checkpoint rather than removing it, at roughly 20x the cost of simply spending
+the principal.
+
+### What must not be done
+
+Splitting a purchase into smaller ones to stay under a verification threshold is
+**structuring**, and it is a criminal offence independently of whatever the
+underlying activity is. Operating at genuinely small amounts because that is the
+product is fine. Engineering transaction sizes to avoid checks is not. Nothing in
+Obol should ever automate "keep it under the limit".
+
+**This section is engineering research, not legal advice.** Before any fiat path
+ships it needs a lawyer - specifically on whether embedding a third-party onramp
+widget keeps us clear of money-transmitter registration, which is the assumption
+the whole design rests on.
 
 ### Why this matters beyond Obol
 
@@ -330,21 +385,26 @@ enabled.
 - Ephemeral session accounts with atomic setup/teardown, plus the reaper
 - `x402_fetch`, `wallet_status`, `wallet_funding_info`
 - Spend caps enforced in process
-- **Embedded onramp** — one provider, vault address pre-filled (§5)
-- Any vault can also be funded by sending USDC to its address directly — ours or
-  the user's, same path, no feature required (§4)
+- **No fiat path.** Users bring their own USDC - zero KYC surface, zero
+  money-transmitter exposure, and it serves crypto-native users completely (§5)
+- Any vault is funded by sending USDC to its address
 
-**Does not ship:** any automatic dispenser or granted balance, LogicSig policy,
-Stellar, bearer instruments, multiple onramp providers with quote comparison.
+**Does not ship:** the embedded onramp (v1.1, gated on legal review - §5), any
+automatic dispenser or granted balance, LogicSig policy, Stellar, bearer
+instruments.
 
 ### What v1 does not solve, stated plainly
 
-The KYC step in §5. Everything after it is automated; that one is regulatory and
-belongs to the onramp provider.
+**Acquisition.** v1 serves users who can already get USDC onto Algorand. That is
+a real limit and belongs in the README rather than being discovered.
 
-Do not let "we should give people money to try it" become the answer to "people
-cannot easily buy USDC". Those are different problems, and only the second one is
-real — it is solved by the embedded onramp, not by a grant.
+The fix is the embedded onramp in §5, held to v1.1 for one reason: the whole
+architecture assumes that embedding a third-party widget which delivers to the
+user's own address keeps us out of money transmission. That assumption is
+load-bearing and needs a lawyer, not confidence.
+
+Do not let "we should give people money to try it" become the answer. It solves
+nothing and buys an abuse problem.
 
 ### Python, not TypeScript
 
@@ -367,10 +427,10 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
 3. **Does `x402-avm` work cleanly inside an MCP server's event loop?** The Authen
    work used `x402ClientSync`. MCP servers are async; the sync client may need a
    thread or the async variant needs its own validation.
-4. **Which onramp provider for v1?** Banxa, MoonPay, Sardine, Transak and Wyre
-   all reach Algorand. Decide on widget quality, geographic coverage, minimum
-   purchase and fee, not on brand. Minimums matter: several sit around $5-15,
-   which is large relative to a $5 session balance.
+4. **Which onramp provider, and does embedding one keep us clear of
+   registration?** Banxa, MoonPay, Sardine, Transak and Wyre all reach Algorand.
+   Choose on lowest-tier limits, geographic coverage, minimum purchase and fee -
+   not brand. The registration question is for a lawyer and gates the fiat path.
 5. **Multiple concurrent sessions per vault** — needed? Adds nonce/ordering
    concerns on vault-signed funding transactions.
 
