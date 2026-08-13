@@ -24,17 +24,17 @@ session ends the account is closed and its remaining value swept back.
     · NEVER signs an x402 payment
     · the trust boundary
          │
-         │  atomic group: fund ALGO → opt in USDC → transfer float
+         │  atomic group: fund ALGO → opt in USDC → transfer balance
          ▼
   Session  (ephemeral, one per agent session)
     · fresh keypair, memory only; address persisted for reaping
-    · funded with a bounded float
+    · funded with a bounded balance
     · signs x402 payments
     · closed at session end, remainder swept to vault
 ```
 
 **Why two tiers rather than one wallet:** a compromised session key loses the
-session float and nothing else. The vault key signs no payments, so it is never
+session balance and nothing else. The vault key signs no payments, so it is never
 handed to an x402 SDK, never in a request path, and can later move to hardware
 without touching payment code.
 
@@ -53,7 +53,7 @@ them, so setup is **one atomic group, one round**:
 |---|---|---|---|
 | 1 | `PaymentTxn` → session | vault | 0.21 ALGO: 0.1 account min + 0.1 ASA slot + fee headroom |
 | 2 | `AssetTransferTxn` amt=0 | session | opt into USDC (ASA `31566704`) |
-| 3 | `AssetTransferTxn` → session | vault | the float |
+| 3 | `AssetTransferTxn` → session | vault | the session balance |
 
 Teardown is a second group. **Order matters** — an account holding an ASA cannot
 be closed:
@@ -204,7 +204,7 @@ hardening does. Revisit if session balances grow by an order of magnitude, or
 if a real customer wants enforced spend policy as a feature.
 
 If the probe says the facilitator rejects LogicSig envelopes, the question closes
-permanently and float caps carry the risk alone — which is the documented,
+permanently and balance caps carry the risk alone — which is the documented,
 deliberate position rather than an accident.
 
 ## 6. MCP surface
@@ -219,7 +219,7 @@ x402_fetch(url, method="GET", body=None, max_price_usdc=None)
 
 wallet_status()
     Vault address, ALGO and USDC balance, active session and its remaining
-    float, spend today against the daily cap.
+    balance, spend today against the daily cap.
 
 wallet_funding_info()
     Address and instructions, for the human. Includes the ASA opt-in note,
@@ -242,7 +242,7 @@ every $0.05 call is not autonomous. Per-session approval is the right unit —
 That matches how people already think about petty cash, and the loss ceiling is
 explicit at approval time.
 
-Escalate to the human only when: the session float is exhausted, a single call
+Escalate to the human only when: the session balance is exhausted, a single call
 exceeds the per-call cap, or a payTo is outside an allowlist that the user
 enabled.
 
@@ -291,7 +291,7 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
    defer the build regardless, but the answer is permanent and costs an afternoon.
 2. **Session boundary** — MCP has no session-end signal on all transports. Idle
    timeout plus reaping on next start is probably the answer, but it means
-   sessions outlive their usefulness and hold float longer than necessary.
+   sessions outlive their usefulness and hold a balance longer than necessary.
 3. **Does `x402-avm` work cleanly inside an MCP server's event loop?** The Authen
    work used `x402ClientSync`. MCP servers are async; the sync client may need a
    thread or the async variant needs its own validation.
@@ -309,6 +309,6 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
    Authen's testnet endpoint.
 3. Session lifecycle: atomic setup, atomic teardown, reaper. Test the crash path
    explicitly — kill the process mid-session and confirm the next start recovers
-   the float.
+   the balance.
 4. Wrap in an MCP server; verify against a real MCP client.
 5. Spend caps and the consent model.
