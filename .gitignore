@@ -26,3 +26,7 @@ probes/out/
 # ...except brand assets shipped inside the package. The QR renderer composites
 # these, so they must be installed with the wheel, not sat in a demo folder.
 !obol/assets/*.png
+
+# Build artifacts
+dist/
+build/
