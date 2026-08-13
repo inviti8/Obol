@@ -3,6 +3,18 @@ name = "obol-wallet"
 version = "0.1.0"
 description = "An MCP server that gives an AI agent a disposable Algorand wallet, so it can pay for x402 resources"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "HEAVYMETA" }]
+keywords = ["mcp", "x402", "algorand", "wallet", "agent", "payments"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries",
+]
+
 # 3.11 for tomllib in the stdlib — network profiles are TOML and that should cost
 # no dependency. See IMPLEMENTATION_PLAN.md, "Packaging".
 requires-python = ">=3.11"
@@ -27,6 +39,13 @@ dependencies = [
     # required users to type `--from 'obol-wallet[qr]'`, which nobody does.
     "pillow>=11",
 ]
+
+# Must come AFTER every bare key of [project]: a sub-table opened mid-table
+# swallows everything below it, which is how `dependencies` briefly became a URL.
+[project.urls]
+Homepage = "https://github.com/inviti8/Obol"
+Repository = "https://github.com/inviti8/Obol"
+Issues = "https://github.com/inviti8/Obol/issues"
 
 [project.scripts]
 obol = "obol.cli:main"
