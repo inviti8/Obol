@@ -1,0 +1,9 @@
+# Scripts and configs run on Linux. A CR at end of line makes bash fail with
+# `$'\r': command not found`. Committed from Windows without this, every shell
+# script in a sibling repo became unrunnable on the server.
+*.sh        text eol=lf
+*.py        text eol=lf
+*.toml      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.json      text eol=lf
