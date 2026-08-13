@@ -225,6 +225,12 @@ The session balance, enforced by the chain rather than by our code — a
 compromised session key can spend what is in that account and nothing more.
 Everything else is defence in depth:
 
+**Amended 2026-08-13 (§7.1):** the ranking below assumed a human approves each
+session. Measured against a real client, they do not — they approve the tool once
+and are never asked again. The caps are therefore the *primary* in-process
+control, not merely defence in depth. The session balance is unaffected and
+remains the real ceiling.
+
 | Control | Enforced | Default |
 |---|---|---|
 | Session balance | on chain, by balance | user-set, suggest $5 |
@@ -578,6 +584,59 @@ explicit at approval time.
 Escalate to the human only when: the session balance is exhausted, a single call
 exceeds the per-call cap, or a payTo is outside an allowlist that the user
 enabled.
+
+### 7.1 What the client actually does — measured, and not what the above assumes
+
+Run against Claude Code on 2026-08-13, on testnet. The paragraph above describes
+what Obol *wants*. This is what happened:
+
+**The human was prompted once, on the first payment. Four more settled with no
+prompt at all** — including the ones that walked into the daily cap. The approval
+was recorded as `mcp__obol__x402_fetch` in the project's
+`.claude/settings.local.json`, and every later call matched it.
+
+So the client's unit of consent is **"this tool, in this project, indefinitely"**,
+not "this session's budget". The difference is not cosmetic:
+
+| | What §7 assumes | What the client does |
+|---|---|---|
+| Scope | One session | The tool, permanently |
+| Expiry | When the session closes | Never |
+| Carries an amount | Yes — the budget is the approval | No |
+| Re-asked next session | Yes | No |
+
+**The consequence: `config.toml` is the real consent boundary, not the prompt.**
+After that single click, the caps in a file are the only thing between an agent
+and the vault — and a future session opens a *fresh* balance under the same
+approval, with nobody asked again.
+
+This is not necessarily wrong. It is close to how people treat petty cash, which
+is the analogy §7 reaches for anyway. But the document claimed the human
+*approves a budget*, and they do not: **they approve a capability.** A security
+reviewer will ask about exactly this gap, so it is written down rather than
+discovered.
+
+**What follows from it.** The client cannot be relied on to bound spending
+per-session, so anything that must hold has to hold inside Obol:
+
+1. **The session balance is still the real ceiling**, on chain, and is unaffected
+   by any of this. That remains the honest answer to "what is the worst case".
+2. **Caps must be treated as the primary control, not defence in depth.** §4
+   ranks them as secondary on the assumption that a human approves each session.
+   That assumption is now known to be false in at least one major client.
+3. **A fresh session with a raised balance deserves a fresh acknowledgement**,
+   recorded by Obol rather than the client — the one mitigation that does not
+   depend on client behaviour. Not built; the shape would be a stored
+   acknowledgement in the data dir that a materially larger `session_balance`
+   invalidates.
+
+Do not "fix" this by making `x402_fetch` prompt per call. That is the thing §7
+rejects for good reason, and a client that remembers approvals would defeat it
+anyway.
+
+**Unmeasured elsewhere.** One client, one run. Claude Desktop, Cursor and the
+rest may differ, and `DESIGN.md` should not generalise from a single sample —
+re-measure before claiming anything about them.
 
 ## 8. v1 scope
 
