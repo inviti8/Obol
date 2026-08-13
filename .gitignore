@@ -30,3 +30,6 @@ probes/out/
 # Build artifacts
 dist/
 build/
+
+# Per-machine editor config, not project config.
+.claude/settings.local.json

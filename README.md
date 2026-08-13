@@ -1,13 +1,14 @@
 <!-- mcp-name: io.github.inviti8/obol -->
 
 <p align="center">
-  <img src="assets/obol-logo.svg" alt="Obol" width="120" height="120">
+  <img src="https://raw.githubusercontent.com/inviti8/Obol/main/assets/obol-logo.svg" alt="Obol" width="120" height="120">
 </p>
 
 <h1 align="center">Obol</h1>
 
-<!-- The logo above is a placeholder. Replace assets/obol-logo.svg; nothing else
-     references it. -->
+<!-- The logo above is a placeholder. Replace assets/obol-logo.svg; the only
+     reference is the absolute URL above, which is absolute because PyPI does
+     not resolve relative paths in a long description. -->
 
 <p align="center">
 An <b>MCP server that gives an AI agent a disposable Algorand wallet</b>, so it can
@@ -150,7 +151,7 @@ is not something a spend cap can bound.
 
 **Approval is per tool, not per payment.** Most MCP clients ask once and remember.
 That means the caps above are your real spending boundary, not the prompt — see
-[`DESIGN.md`](./DESIGN.md) §7.1, which documents what was measured rather than
+[`DESIGN.md`](https://github.com/inviti8/Obol/blob/main/DESIGN.md) §7.1, which documents what was measured rather than
 what was assumed.
 
 **A settled payment proves settlement and nothing else** — not that the resource
@@ -160,11 +161,11 @@ was correct, honest, or worth its price.
 
 ## Documentation
 
-- **[CLAUDE.md](./CLAUDE.md)** — orientation, and the x402 facts that cost real
+- **[CLAUDE.md](https://github.com/inviti8/Obol/blob/main/CLAUDE.md)** — orientation, and the x402 facts that cost real
   debugging time to learn.
-- **[DESIGN.md](./DESIGN.md)** — architecture, the security model, and the
+- **[DESIGN.md](https://github.com/inviti8/Obol/blob/main/DESIGN.md)** — architecture, the security model, and the
   limitations stated plainly.
-- **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** — build order and what
+- **[IMPLEMENTATION_PLAN.md](https://github.com/inviti8/Obol/blob/main/IMPLEMENTATION_PLAN.md)** — build order and what
   each phase actually proved.
 
 ## Status
