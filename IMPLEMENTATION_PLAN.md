@@ -274,7 +274,28 @@ stock Windows console, and this is a tool people will run on Windows.
 defined and loaded from config, but nothing enforces it — there is no spend path
 to enforce it on until x402 lands.
 
-### Phase 2 — x402 payment
+### Phase 2 — x402 payment — **DONE 2026-08-12**
+
+Paid from a session account against a loopback Authen node on testnet, and the
+attestation verifies offline (`probes/verify_attestation.py`) — including a
+negative control, since a verifier that cannot fail proves nothing.
+
+**The design point worth keeping.** A 402 may offer several `accepts` entries,
+and the SDK runs its own selector over them. Validating one entry and handing the
+SDK the whole challenge would let it sign a *different* one — different payTo,
+different amount, different asset — making every guard decorative. So the
+challenge is narrowed to the single validated entry before it reaches
+`create_payment_payload`: **validate then sign the same thing.**
+
+Also confirmed: an x402 payment costs the buyer no ALGO. Two settlements moved
+0.1 USDC and left the session's ALGO untouched.
+
+**Deliberately still absent:** `caps.py`. `--max-price` and the configured
+per-call cap are enforced in `x402.guard` because there is now a spend path and
+leaving it uncapped would be careless; the daily counter, the allowlist and the
+consent model are Phase 3.
+
+### Phase 2 — x402 payment (original plan)
 
 `signer.py`, `x402.py`.
 

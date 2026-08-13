@@ -17,12 +17,15 @@ Every command takes `--network`, defaulting to testnet.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from pathlib import Path
 
 from .config import PROFILES, Config, load_config
 from .ledger import Ledger
 from .session import (
     close_session,
+    live_session,
     open_session,
     open_vault,
     reap,
@@ -118,6 +121,67 @@ def cmd_reap(cfg: Config, args) -> int:
     return 1 if failed else 0
 
 
+def cmd_fetch(cfg: Config, args) -> int:
+    """Fetch a URL, paying from the open session if it challenges."""
+    import asyncio
+
+    from .x402 import PaymentRefused, PaymentRejected, fetch
+
+    session, record, ledger = live_session(cfg)
+    vault, _ = open_vault(cfg)
+
+    body: bytes | None = None
+    if args.body_file:
+        body = Path(args.body_file).read_bytes()
+    elif args.body is not None:
+        body = args.body.encode()
+
+    max_price = (
+        cfg.network.to_units(args.max_price) if args.max_price is not None else None
+    )
+
+    try:
+        result = asyncio.run(
+            fetch(
+                cfg,
+                session,
+                args.url,
+                method=args.method,
+                body=body,
+                max_price_micro=max_price,
+                our_addresses={vault.address},
+            )
+        )
+    except PaymentRefused as exc:
+        print(f"REFUSED\n{exc}", file=sys.stderr)
+        return 2
+    except PaymentRejected as exc:
+        print(f"REJECTED\n{exc}", file=sys.stderr)
+        return 3
+
+    if result.paid:
+        ledger.record_spend(record, result.price_micro)
+        print(f"paid      {cfg.network.fmt(result.price_micro)} to {result.pay_to}")
+        print(f"from      session {record.index} {result.payer}")
+        print(f"txid      {result.txid}")
+        print(f"explorer  {_explorer(cfg, result.txid)}")
+        print(f"settled   {result.receipt.get('success')}")
+    else:
+        print(f"unpaid    {result.status_code} (no challenge)")
+    print(f"type      {result.content_type}  {len(result.content)} bytes")
+    print()
+
+    if args.output:
+        Path(args.output).write_bytes(result.content)
+        print(f"body written to {args.output}")
+    else:
+        try:
+            print(json.dumps(result.json(), indent=2)[: args.max_body])
+        except Exception:
+            print(result.content[: args.max_body].decode("utf-8", "replace"))
+    return 0
+
+
 def cmd_address(cfg: Config, args) -> int:
     """Just the address, for piping into a faucet or a funding script."""
     vault, _ = open_vault(cfg)
@@ -153,6 +217,18 @@ def build_parser() -> argparse.ArgumentParser:
     s_close = session_sub.add_parser("close", help="close and sweep back")
     s_close.add_argument("--index", type=int, default=None)
     s_close.set_defaults(fn=cmd_session_close)
+
+    fetch = sub.add_parser("fetch", help="fetch a URL, paying if it challenges")
+    fetch.add_argument("url")
+    fetch.add_argument("--method", default="GET")
+    fetch.add_argument("--body", default=None, help="request body as text")
+    fetch.add_argument("--body-file", default=None, help="request body from a file")
+    fetch.add_argument(
+        "--max-price", type=float, default=None, help="refuse above this, in whole units"
+    )
+    fetch.add_argument("--output", default=None, help="write the body to a file")
+    fetch.add_argument("--max-body", type=int, default=2000)
+    fetch.set_defaults(fn=cmd_fetch)
 
     sub.add_parser("sessions", help="what the ledger believes").set_defaults(
         fn=cmd_sessions

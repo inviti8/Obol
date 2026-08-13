@@ -156,6 +156,34 @@ def open_session(cfg: Config, balance_micro: int) -> tuple[SessionRecord, str]:
     return record, txid
 
 
+def live_session(cfg: Config) -> tuple[Key, SessionRecord, Ledger]:
+    """The open session's key, its record, and the ledger holding both.
+
+    Refuses rather than opening one silently: a spend path that provisions its own
+    funding source on demand is not something a user can reason about. The MCP
+    server opens lazily on the first paid call (Phase 4), where the human has
+    already approved a session budget; the CLI stays explicit.
+    """
+    vault, _ = open_vault(cfg)
+    ledger = Ledger.load(cfg.ledger_path)
+    live = [s for s in ledger.live_sessions() if s.state == "open"]
+    if not live:
+        raise SystemExit(
+            "No open session. Run `obol session open --balance <amount>` first.\n"
+            "A session is what bounds the loss: payments spend from it, never from "
+            "the vault."
+        )
+    record = live[0]
+    key = derive_session_key(vault.seed, record.index)
+    if key.address != record.address:
+        raise SystemExit(
+            f"Session {record.index} in the ledger is {record.address}, but this "
+            f"vault derives {key.address}. Refusing to sign for another vault's "
+            "session."
+        )
+    return key, record, ledger
+
+
 def close_session(cfg: Config, index: int | None = None) -> tuple[SessionRecord, str | None]:
     """Close a session and sweep everything back to the vault."""
     vault, _ = open_vault(cfg)
