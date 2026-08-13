@@ -213,6 +213,7 @@ def cmd_vault_qr(cfg: Config, args) -> int:
         cfg.network.payment_asa,
         network=cfg.network.name,
         algo_needed_micro=VAULT_MIN_ALGO_MICRO,
+        asset_label=cfg.network.asset_label,
     )
     if args.asset_only:
         targets = [t for t in targets if t.what != "ALGO"]
@@ -236,9 +237,17 @@ def cmd_vault_qr(cfg: Config, args) -> int:
         if args.write:
             out = Path(args.write)
             out.mkdir(parents=True, exist_ok=True)
-            name = "algo" if target.what == "ALGO" else f"asa-{cfg.network.payment_asa}"
+            name = target.theme.key
             path = out / f"obol-fund-{cfg.network.name}-{name}.png"
-            path.write_bytes(qr_styled_png(target.uri, logo=default_logo()))
+            path.write_bytes(
+                qr_styled_png(
+                    target.uri,
+                    logo=default_logo(),
+                    dark=target.theme.modules,
+                    light=target.theme.background,
+                    caption=target.theme.label,
+                )
+            )
             print(f"  written to {path}")
 
     print()

@@ -29,8 +29,8 @@ NOTARIZE = "http://127.0.0.1:8402/api/v1/notarize"
 
 def _summarise(result) -> dict:
     """Pull the structured payload out of a CallToolResult."""
-    if getattr(result, "structuredContent", None):
-        return result.structuredContent
+    if getattr(result, "structured_content", None):
+        return result.structured_content
     for block in getattr(result, "content", []) or []:
         text = getattr(block, "text", None)
         if text:

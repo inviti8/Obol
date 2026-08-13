@@ -139,6 +139,7 @@ def qr_styled_png(
     border: int = 4,
     dark: str = "#FFFFFF",
     light: str = "#000000",
+    caption: str | None = None,
     logo_fraction: float = LOGO_FRACTION,
 ) -> bytes:
     """A QR with inverted colours and an optional centred logo.
@@ -164,7 +165,7 @@ def qr_styled_png(
     buf = io.BytesIO()
     symbol.save(buf, kind="png", scale=scale, border=border, dark=dark, light=light)
     png = buf.getvalue()
-    if logo is None:
+    if logo is None and caption is None:
         return png
 
     try:
@@ -177,6 +178,9 @@ def qr_styled_png(
         ) from exc
 
     qr_img = Image.open(io.BytesIO(png)).convert("RGBA")
+    if logo is None:
+        return _captioned(qr_img, caption, dark, light)
+
     mark = Image.open(io.BytesIO(logo)).convert("RGBA")
 
     # The official asset is mostly transparent padding - its ink occupies about a
@@ -203,8 +207,46 @@ def qr_styled_png(
     qr_img.alpha_composite(
         box, ((qr_img.width - box_w) // 2, (qr_img.height - box_h) // 2)
     )
+    return _captioned(qr_img, caption, dark, light)
+
+
+def _captioned(qr_img, caption: str | None, dark: str, light: str) -> bytes:
+    """Add a caption band BELOW the code, never inside it.
+
+    Text laid over the symbol would eat error correction on top of what the logo
+    already costs. A band underneath costs nothing at all, and is easier to read.
+    """
+    import io
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    if not caption:
+        out = io.BytesIO()
+        qr_img.save(out, format="PNG")
+        return out.getvalue()
+
+    size = max(16, qr_img.width // 10)
+    try:
+        font = ImageFont.load_default(size=size)
+    except TypeError:  # pragma: no cover - very old Pillow
+        font = ImageFont.load_default()
+
+    pad = size // 2
+    scratch = ImageDraw.Draw(qr_img)
+    left, top, right, bottom = scratch.textbbox((0, 0), caption, font=font)
+    band = (bottom - top) + 2 * pad
+
+    canvas = Image.new("RGBA", (qr_img.width, qr_img.height + band), light)
+    canvas.alpha_composite(qr_img, (0, 0))
+    draw = ImageDraw.Draw(canvas)
+    draw.text(
+        ((canvas.width - (right - left)) // 2 - left, qr_img.height + pad - top),
+        caption,
+        font=font,
+        fill=dark,
+    )
     out = io.BytesIO()
-    qr_img.save(out, format="PNG")
+    canvas.save(out, format="PNG")
     return out.getvalue()
 
 
@@ -241,6 +283,45 @@ def default_logo() -> bytes | None:
 
 
 @dataclass(frozen=True)
+class AssetTheme:
+    """How one asset's QR looks, so the two are never confused at a glance.
+
+    Colour and caption both exist for the same reason the asset id is in the URI:
+    sending the wrong asset is rejected outright, so the failure is worth
+    designing against twice - once for the wallet, once for the human holding the
+    phone.
+
+    Modules stay light on a dark field in both themes. White on the USDC blue
+    measures 4.68:1, comfortably past the ~3:1 that scanners want and past the
+    4.5:1 accessibility bar; a lighter brand blue would not be.
+    """
+
+    key: str
+    label: str
+    background: str
+    modules: str = "#FFFFFF"
+
+
+THEME_ALGO = AssetTheme(key="algo", label="ALGO", background="#000000")
+# Circle's USDC blue. Cosmetic, so change it freely - but re-check the contrast
+# in `blocks_are_printable`'s neighbour test if you lighten it.
+THEME_USDC = AssetTheme(key="usdc", label="USDC", background="#2775CA")
+
+
+def theme_for(asset_label: str) -> AssetTheme:
+    """Theme by asset label, defaulting to the ALGO look for anything unknown.
+
+    An unrecognised ASA gets the neutral dark theme rather than borrowing USDC's
+    blue, because the colour is a claim about which asset this is.
+    """
+    if asset_label.upper() == "ALGO":
+        return THEME_ALGO
+    if asset_label.upper() == "USDC":
+        return THEME_USDC
+    return AssetTheme(key=asset_label.lower(), label=asset_label, background="#000000")
+
+
+@dataclass(frozen=True)
 class FundingTarget:
     """One thing a human can send, with the URI a wallet should scan."""
 
@@ -248,6 +329,7 @@ class FundingTarget:
     why: str
     uri: str
     suggested: str | None = None
+    theme: AssetTheme = THEME_ALGO
 
 
 def funding_targets(
@@ -256,6 +338,7 @@ def funding_targets(
     *,
     network: str,
     algo_needed_micro: int,
+    asset_label: str = "USDC",
 ) -> list[FundingTarget]:
     """The two things a vault can be sent, each as a scannable URI.
 
@@ -273,9 +356,10 @@ def funding_targets(
             ),
             uri=arc26_uri(address, label=label, note="Obol vault funding: ALGO"),
             suggested=f"{algo_needed_micro / 1e6:.2f} ALGO",
+            theme=THEME_ALGO,
         ),
         FundingTarget(
-            what=f"ASA {payment_asa}",
+            what=asset_label,
             why=(
                 "Send this ONLY after the vault is opted in. Before that the "
                 "transfer is rejected outright - it does not sit pending."
@@ -287,5 +371,6 @@ def funding_targets(
                 note=f"Obol vault funding: ASA {payment_asa}",
             ),
             suggested=None,
+            theme=theme_for(asset_label),
         ),
     ]

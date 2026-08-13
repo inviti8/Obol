@@ -129,10 +129,11 @@ def test_empty_label_is_omitted():
 
 
 def test_two_targets_algo_first():
+    """ALGO first, because the order is forced (section 3.1) and the list says so."""
     targets = funding_targets(
         ADDR, USDC_TESTNET, network="testnet", algo_needed_micro=210_000
     )
-    assert [t.what for t in targets] == ["ALGO", f"ASA {USDC_TESTNET}"]
+    assert [t.what for t in targets] == ["ALGO", "USDC"]
 
 
 def test_algo_target_carries_no_asset_id():
@@ -294,3 +295,78 @@ def test_packaged_logo_resolves_as_a_resource():
     """It must load from an installed wheel, not just a source checkout."""
     logo = default_logo()
     assert logo is not None and logo[:8].hex() == "89504e470d0a1a0a"
+
+
+# ---- per-asset themes ----------------------------------------------------
+
+
+def test_algo_and_usdc_get_distinct_backgrounds():
+    """Colour is a claim about which asset this is, so they must not collide."""
+    from obol.funding import THEME_ALGO, THEME_USDC
+
+    assert THEME_ALGO.background != THEME_USDC.background
+    assert THEME_ALGO.label == "ALGO" and THEME_USDC.label == "USDC"
+
+
+def test_unknown_asset_does_not_borrow_usdc_blue():
+    from obol.funding import THEME_USDC, theme_for
+
+    theme = theme_for("ASA 769120200")
+    assert theme.background != THEME_USDC.background
+    assert theme.label == "ASA 769120200"
+
+
+def test_theme_lookup_is_case_insensitive():
+    from obol.funding import THEME_USDC, theme_for
+
+    assert theme_for("usdc").background == THEME_USDC.background
+
+
+def test_targets_carry_their_theme():
+    targets = funding_targets(
+        ADDR, USDC_TESTNET, network="testnet", algo_needed_micro=210_000
+    )
+    assert targets[0].theme.key == "algo"
+    assert targets[1].theme.key == "usdc"
+
+
+def test_stand_in_asset_is_not_called_usdc():
+    """A self-minted ASA must not be labelled USDC anywhere a human reads it."""
+    targets = funding_targets(
+        ADDR,
+        769120200,
+        network="testnet",
+        algo_needed_micro=210_000,
+        asset_label="ASA 769120200",
+    )
+    assert targets[1].what == "ASA 769120200"
+    assert "USDC" not in targets[1].what
+
+
+def test_white_on_usdc_blue_clears_the_scanning_threshold():
+    """Contrast is a scanability property, not a taste one."""
+    from obol.funding import THEME_USDC
+
+    def luminance(hexc: str) -> float:
+        parts = [int(hexc[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+        parts = [
+            v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4 for v in parts
+        ]
+        return 0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]
+
+    hi = luminance(THEME_USDC.modules)
+    lo = luminance(THEME_USDC.background)
+    hi, lo = max(hi, lo), min(hi, lo)
+    assert (hi + 0.05) / (lo + 0.05) >= 3.0
+
+
+def test_caption_grows_the_image_downward_only():
+    """A caption must sit outside the symbol - inside it would eat error correction."""
+    pytest.importorskip("PIL.Image", reason="needs the [qr] extra")
+    uri = arc26_uri(ADDR)
+    plain = qr_styled_png(uri)
+    captioned = qr_styled_png(uri, caption="USDC")
+    pw, ph = png_size(plain)
+    cw, ch = png_size(captioned)
+    assert cw == pw, "caption must not change the code's width"
+    assert ch > ph, "caption occupies a band below the code"

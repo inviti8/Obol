@@ -17,6 +17,8 @@ from typing import Any
 
 import httpx
 
+from mcp.server.mcpserver import Image
+
 from ..errors import CapExceeded, PaymentRefused, PaymentRejected, WalletError
 from .wallet import Wallet
 
@@ -84,9 +86,18 @@ aim at the wrong asset by hand - which matters because sending the wrong one is
 rejected rather than held. No amount is encoded; the human types that into their
 own wallet where they see it before confirming.
 
-`qr_dir` optionally writes those URIs as PNG QR codes into that directory, under
-the same configured file root as body_file/output_file. `obol vault qr` prints
-the same codes straight into a terminal."""
+TOPPING UP ONE ASSET. Pass `asset` - "ALGO", "USDC", or the asset id - and the
+reply narrows to that asset's steps AND includes the QR code as an image, so the
+human can scan it directly. ALGO codes are black; the payment asset's are blue
+and captioned, so the two are not confused at a glance. Omit `asset` for the
+whole picture as text.
+
+The usual flow: `wallet_status` answers "how much do I have", then
+`wallet_funding_info(asset="USDC")` answers "I want to top up USDC".
+
+`qr_dir` optionally writes the codes as PNG files into that directory, under the
+same configured file root as body_file/output_file. `obol vault qr` prints them
+straight into a terminal."""
 
 
 def register(server: Any, wallet: Wallet) -> None:
@@ -170,8 +181,23 @@ def register(server: Any, wallet: Wallet) -> None:
     @server.tool(
         name="wallet_funding_info", description=WALLET_FUNDING_INFO_DESCRIPTION
     )
-    async def wallet_funding_info(qr_dir: str | None = None) -> dict[str, Any]:
+    async def wallet_funding_info(
+        asset: str | None = None, qr_dir: str | None = None
+    ) -> Any:
         try:
-            return await wallet.funding_info(qr_dir=qr_dir)
+            info = await wallet.funding_info(asset=asset, qr_dir=qr_dir)
         except WalletError as exc:
             return {"error": "wallet_not_ready", "message": str(exc)}
+        if asset is None:
+            return info
+        # A named asset is a top-up request, so hand back the code itself rather
+        # than a path the human has to go and open. Colour and caption say which
+        # asset it is without anyone reading the URI.
+        try:
+            label, uri, png = await wallet.funding_qr(asset)
+        except WalletError as exc:
+            return {"error": "wallet_not_ready", "message": str(exc)}
+        except Exception:
+            return info  # branding is optional; the URI is the payload
+        info["qr_shown"] = label
+        return [info, Image(data=png, format="png")]

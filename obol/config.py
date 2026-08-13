@@ -21,6 +21,9 @@ from pathlib import Path
 
 from .errors import WalletError
 
+# The real Circle USDC asset ids. Anything else is not USDC and is not called it.
+USDC_ASSET_IDS = frozenset({31566704, 10458941})
+
 # Algorand minimum balance: 0.1 ALGO for the account, plus 0.1 per ASA held.
 MIN_BALANCE_MICRO = 100_000
 ASA_MIN_BALANCE_MICRO = 100_000
@@ -55,6 +58,17 @@ class NetworkProfile:
     @property
     def is_mainnet(self) -> bool:
         return self.name == "mainnet"
+
+    @property
+    def asset_label(self) -> str:
+        """What to call the payment asset in front of a human.
+
+        Only the two real Circle USDC ids earn the name. A stand-in ASA set via
+        config gets its number, because calling something USDC when it is not is
+        the kind of small dishonesty that ends up in a support thread.
+        """
+        return "USDC" if self.payment_asa in USDC_ASSET_IDS else f"ASA {self.payment_asa}"
+
 
     def to_units(self, amount: float) -> int:
         return int(round(amount * 10**self.decimals))

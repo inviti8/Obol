@@ -51,6 +51,14 @@ from ..x402 import PaymentResult, fetch
 INLINE_BODY_LIMIT = 64_000
 
 
+def _matches_asset(target, wanted: str, label: str) -> bool:
+    """Match how a human would say it: 'algo', 'usdc', or the raw asset id."""
+    w = wanted.strip().lower()
+    return w in {target.what.lower(), target.theme.key, target.theme.label.lower()} or (
+        w in {"asset", "token", label.lower()} and target.what != "ALGO"
+    )
+
+
 @dataclass
 class SessionHandle:
     key: Key
@@ -148,6 +156,11 @@ class Wallet:
         return {
             "network": self.cfg.network.name,
             "payment_asset": self.cfg.network.payment_asa,
+            "payment_asset_label": self.cfg.network.asset_label,
+            "balances": {
+                "ALGO": f"{st.algo_micro / 1e6:.6f}",
+                self.cfg.network.asset_label: fmt(st.asset_micro),
+            },
             "vault": {
                 "address": st.address,
                 "algo": f"{st.algo_micro / 1e6:.6f}",
@@ -167,17 +180,33 @@ class Wallet:
             },
         }
 
-    async def funding_info(self, qr_dir: str | None = None) -> dict[str, Any]:
+    async def funding_info(
+        self, asset: str | None = None, qr_dir: str | None = None
+    ) -> dict[str, Any]:
         from ..funding import default_logo, funding_targets, qr_styled_png
 
         st = await asyncio.to_thread(vault_status, self.cfg)
-        asset = self.cfg.network.payment_asa
+        asset_id = self.cfg.network.payment_asa
+        label = self.cfg.network.asset_label
         targets = funding_targets(
             st.address,
-            asset,
+            asset_id,
             network=self.cfg.network.name,
             algo_needed_micro=VAULT_MIN_ALGO_MICRO,
+            asset_label=label,
         )
+        by_key = {t.theme.key: t for t in targets}
+        THEME_KEY_ASSET = next(k for k in by_key if k != "algo")
+        if asset is not None:
+            targets = [t for t in targets if _matches_asset(t, asset, label)]
+            if not targets:
+                raise WalletError(
+                    f"Unknown asset {asset!r}. This wallet holds ALGO and {label}."
+                )
+        # Steps are always built from the FULL set, then filtered. Building them
+        # from the filtered list indexed positionally is how "top up USDC" started
+        # reading the ALGO entry.
+        wanted = {t.theme.key for t in targets}
         steps = [
             {
                 "step": 1,
@@ -191,13 +220,14 @@ class Wallet:
                     "The vault cannot pay the fee for its own asset opt-in without "
                     "it, and 0.1 ALGO is locked as the asset slot minimum."
                 ),
-                "scan": targets[0].uri,
+                "scan": by_key["algo"].uri,
+                "asset": "ALGO",
             },
             {
                 "step": 2,
                 "done": st.opted_in,
                 "who": "obol",
-                "action": f"Opt the vault into ASA {asset} (`obol vault optin`).",
+                "action": f"Opt the vault into ASA {asset_id} (`obol vault optin`).",
                 "why": (
                     "Until this is done, USDC sent to the vault is REJECTED outright "
                     "- it does not sit pending, it fails."
@@ -207,19 +237,36 @@ class Wallet:
                 "step": 3,
                 "done": st.asset_micro > 0,
                 "who": "human",
-                "action": f"Send USDC (ASA {asset}) to {st.address}.",
+                "action": f"Send {label} (ASA {asset_id}) to {st.address}.",
                 "why": "With the opt-in done, the transfer will arrive.",
-                "scan": targets[1].uri,
+                "scan": by_key[THEME_KEY_ASSET].uri,
+                "asset": label,
             },
         ]
         info: dict[str, Any] = {
             "network": self.cfg.network.name,
             "vault_address": st.address,
-            "payment_asset": asset,
+            "payment_asset": asset_id,
+            "payment_asset_label": label,
             "ready": st.ready,
             "current_step": st.step,
             "next_action": st.message,
-            "steps": steps,
+            "steps": [
+                s
+                for s in steps
+                # Step 2 is Obol's own opt-in and is a precondition for the asset
+                # transfer, so it stays whenever the asset side is in scope.
+                if asset is None
+                or (s["step"] == 1 and "algo" in wanted)
+                or (s["step"] in (2, 3) and THEME_KEY_ASSET in wanted)
+            ],
+            "asked_about": label if asset and THEME_KEY_ASSET in wanted else (
+                "ALGO" if asset else "both"
+            ),
+            "balances": {
+                "ALGO": f"{st.algo_micro / 1e6:.6f}",
+                label: self.cfg.network.fmt(st.asset_micro),
+            },
             "note": (
                 "These three steps are in a forced order and cannot be reordered. "
                 "An onramp delivers USDC and not ALGO, so step 1 still needs doing "
@@ -236,17 +283,50 @@ class Wallet:
         if qr_dir is not None:
             written = []
             for target in targets:
-                name = "algo" if target.what == "ALGO" else f"asa-{asset}"
+                name = target.theme.key
                 rel = f"{qr_dir.rstrip('/')}/obol-fund-{self.cfg.network.name}-{name}.png"
                 path = await asyncio.to_thread(
                     write_output,
                     self.cfg.file_root,
                     rel,
-                    qr_styled_png(target.uri, logo=default_logo()),
+                    qr_styled_png(
+                        target.uri,
+                        logo=default_logo(),
+                        dark=target.theme.modules,
+                        light=target.theme.background,
+                        caption=target.theme.label,
+                    ),
                 )
                 written.append(str(path))
             info["qr_written"] = written
         return info
+
+    async def funding_qr(self, asset: str) -> tuple[str, str, bytes]:
+        """One asset's funding code as PNG bytes. Returns (label, uri, png)."""
+        from ..funding import default_logo, funding_targets, qr_styled_png
+
+        st = await asyncio.to_thread(vault_status, self.cfg)
+        label = self.cfg.network.asset_label
+        targets = funding_targets(
+            st.address,
+            self.cfg.network.payment_asa,
+            network=self.cfg.network.name,
+            algo_needed_micro=VAULT_MIN_ALGO_MICRO,
+            asset_label=label,
+        )
+        picked = next((t for t in targets if _matches_asset(t, asset, label)), None)
+        if picked is None:
+            raise WalletError(
+                f"Unknown asset {asset!r}. This wallet holds ALGO and {label}."
+            )
+        png = qr_styled_png(
+            picked.uri,
+            logo=default_logo(),
+            dark=picked.theme.modules,
+            light=picked.theme.background,
+            caption=picked.theme.label,
+        )
+        return picked.theme.label, picked.uri, png
 
     async def fetch(
         self,
