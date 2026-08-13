@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from obol.config import PROFILES, Caps, load_config
+from obol.errors import WalletError
 
 
 def test_defaults_to_testnet(tmp_path, monkeypatch):
@@ -31,7 +32,7 @@ def test_explicit_argument_beats_env(tmp_path, monkeypatch):
 
 
 def test_unknown_network_refuses(tmp_path):
-    with pytest.raises(SystemExit):
+    with pytest.raises(WalletError):
         load_config(network="algorand-betanet-maybe", data_dir=tmp_path)
 
 

@@ -19,6 +19,8 @@ import tomllib
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from .errors import WalletError
+
 # Algorand minimum balance: 0.1 ALGO for the account, plus 0.1 per ASA held.
 MIN_BALANCE_MICRO = 100_000
 ASA_MIN_BALANCE_MICRO = 100_000
@@ -102,6 +104,12 @@ class Config:
     network: NetworkProfile
     data_dir: Path
     caps: Caps
+    # How long a session may sit unused before the server closes it and sweeps the
+    # balance back. MCP gives no reliable session-end signal on any transport
+    # (DESIGN.md section 9), so this plus reaping on next start is the answer. Ten
+    # minutes: long enough that an agent thinking between calls does not pay to
+    # reopen, short enough that a forgotten client does not hold funds overnight.
+    idle_timeout_seconds: int = 600
 
     @property
     def ledger_path(self) -> Path:
@@ -143,7 +151,7 @@ def load_config(network: str | None = None, data_dir: Path | None = None) -> Con
         or "testnet"
     )
     if name not in PROFILES:
-        raise SystemExit(
+        raise WalletError(
             f"Unknown network {name!r}. Known: {', '.join(sorted(PROFILES))}."
         )
     profile = PROFILES[name]
@@ -166,4 +174,9 @@ def load_config(network: str | None = None, data_dir: Path | None = None) -> Con
         ),
         allowlist=tuple(caps_raw.get("allowlist", ())),
     )
-    return Config(network=profile, data_dir=data_dir, caps=caps)
+    idle = int(
+        raw.get("session", {}).get("idle_timeout_seconds", Config.idle_timeout_seconds)
+    )
+    return Config(
+        network=profile, data_dir=data_dir, caps=caps, idle_timeout_seconds=idle
+    )

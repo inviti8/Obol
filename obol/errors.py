@@ -19,6 +19,20 @@ class ObolError(Exception):
     """Base for everything this package raises deliberately."""
 
 
+class WalletError(ObolError):
+    """The wallet cannot do what was asked: not funded, not opted in, no session.
+
+    Deliberately NOT SystemExit, which is what this started as. SystemExit reads
+    fine in a CLI and is lethal in a server: it inherits from BaseException, so it
+    sails through ordinary `except Exception` handlers and terminates the process.
+    In the MCP server that showed up as the whole thing dying mid-tool-call - the
+    client saw "Connection closed" and no error message at all.
+
+    A library module has no business deciding the process should end. The CLI
+    catches this and exits; the server catches it and answers.
+    """
+
+
 class PaymentRefused(ObolError):
     """We declined before signing. Nothing moved.
 

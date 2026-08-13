@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from .config import PROFILES, Config, load_config
+from .errors import ObolError
 from .ledger import Ledger
 from .session import (
     close_session,
@@ -259,7 +260,13 @@ def main() -> int:
         # Not a confirmation prompt - those belong on the spend path in Phase 3.
         # This is here so mainnet is never entered without noticing.
         print("*** MAINNET - real money ***\n", file=sys.stderr)
-    return args.fn(cfg, args)
+    try:
+        return args.fn(cfg, args)
+    except ObolError as exc:
+        # The library raises these instead of SystemExit so a server can survive
+        # them; the CLI is where they become an exit code.
+        print(str(exc), file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

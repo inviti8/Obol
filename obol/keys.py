@@ -33,6 +33,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .errors import WalletError
 from nacl.signing import SigningKey
 
 SEED_FILENAME = "vault_seed.bin"
@@ -125,7 +126,7 @@ def load_or_create_vault(seed_path: Path) -> tuple[Key, bool]:
     if seed_path.exists():
         seed = seed_path.read_bytes()
         if len(seed) != 32:
-            raise SystemExit(
+            raise WalletError(
                 f"Vault seed at {seed_path} is {len(seed)} bytes, expected 32.\n"
                 "Refusing to start rather than sign with a malformed key. If this "
                 "install never held funds, delete the file and a new vault will be "

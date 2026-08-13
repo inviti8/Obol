@@ -12,6 +12,7 @@ import json
 
 import pytest
 
+from obol.errors import WalletError
 from obol.ledger import LEDGER_VERSION, Ledger, SessionRecord
 
 
@@ -108,7 +109,7 @@ def test_refuses_an_unknown_version(tmp_path):
     """A ledger we cannot interpret may still point at funded accounts."""
     path = tmp_path / "ledger.json"
     path.write_text(json.dumps({"version": LEDGER_VERSION + 1, "sessions": []}))
-    with pytest.raises(SystemExit):
+    with pytest.raises(WalletError):
         Ledger.load(path)
 
 

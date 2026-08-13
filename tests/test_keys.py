@@ -17,6 +17,7 @@ from algosdk import account as algo_account
 from algosdk import encoding as algo_encoding
 from algosdk import mnemonic as algo_mnemonic
 
+from obol.errors import WalletError
 from obol.keys import (
     Key,
     algorand_address,
@@ -126,7 +127,7 @@ def test_vault_seed_survives_a_write_read_cycle(tmp_path):
 def test_refuses_a_truncated_seed(tmp_path):
     seed_path = tmp_path / "vault_seed.bin"
     seed_path.write_bytes(os.urandom(31))
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(WalletError) as exc:
         load_or_create_vault(seed_path)
     assert "32" in str(exc.value)
 

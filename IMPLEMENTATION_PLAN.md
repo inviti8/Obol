@@ -359,7 +359,46 @@ it without a real client in the loop would be guesswork.
 **Done when:** each cap refuses correctly and the refusal names which limit was
 hit. Unit-testable without network.
 
-### Phase 4 — MCP server
+### Phase 4 — MCP server — **DONE 2026-08-12**
+
+`obol/mcp/{server,tools,wallet}.py` plus an `obol-mcp` entry point. Driven by a
+real MCP client over a real stdio transport (`probes/mcp_client.py`, SDK `mcp`
+2.0.0, protocol `2026-07-28`): tools listed, `wallet_status` and
+`wallet_funding_info` answered, a cap refusal returned without spending, and
+`x402_fetch` paid $0.05 from a session it opened lazily — no key touched.
+
+**The bug this phase found, and it is the important part of it.** `session.py`
+raised `SystemExit` for user-facing errors, ported straight from the CLI. That is
+lethal in a server: `SystemExit` inherits from `BaseException`, so it goes
+straight through `except Exception` and **terminates the process**. A vault too
+poor to fund the default $5 session balance therefore killed the entire MCP
+server mid-tool-call, and the client saw only `Connection closed` — no message,
+no traceback, nothing to debug from.
+
+Fixed properly rather than papered over: library modules raise `WalletError`
+(an ordinary `Exception`), the CLI turns it into an exit code, and the server
+turns it into a structured tool error. **A library has no business deciding the
+process should end.** `tests/test_errors.py` enforces both halves — every error
+is catchable as `Exception`, and no module outside `cli.py` may contain
+`raise SystemExit`.
+
+**Session lifecycle in the server:**
+
+| | |
+|---|---|
+| Startup | Reap orphans **before** any tool answers — an unclean exit costs nothing as long as the next start happens |
+| First paid call | Opens a session lazily. Not at startup: that would fund an account for an agent that may never buy anything |
+| Idle | Closed on a timer (`idle_timeout_seconds`, default 600). Verified live |
+| Shutdown | Closes the session, with the reaper as the real guarantee — a killed process runs no handler |
+
+**Known wart, not fixed:** `x402_fetch` opens a session before evaluating caps,
+so a call that is certain to be refused still funds one (~0.005 ALGO, and the
+balance sits until idle close). The price is only known after the challenge, and
+the challenge needs no session — the fix is to split `x402.fetch` into a
+challenge step and a pay step so the session opens just before signing. Deferred
+because it is an efficiency wart, not a correctness bug.
+
+### Phase 4 — MCP server (original plan)
 
 `mcp/server.py`, `mcp/tools.py`.
 

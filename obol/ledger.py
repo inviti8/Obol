@@ -19,6 +19,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .errors import WalletError
+
 LEDGER_VERSION = 1
 
 
@@ -66,7 +68,7 @@ class Ledger:
             return cls(path=path)
         raw = json.loads(path.read_text(encoding="utf-8"))
         if raw.get("version") != LEDGER_VERSION:
-            raise SystemExit(
+            raise WalletError(
                 f"Ledger at {path} is version {raw.get('version')}, expected "
                 f"{LEDGER_VERSION}. Refusing to guess at its meaning while it may "
                 "point at live accounts."

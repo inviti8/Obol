@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .errors import WalletError
 from . import algorand
 from .config import SESSION_FUNDING_MICRO, VAULT_MIN_ALGO_MICRO, Config
 from .keys import Key, derive_session_key, load_or_create_vault
@@ -93,9 +94,9 @@ def vault_optin(cfg: Config) -> str:
     cli = algorand.client(cfg.network)
     state = algorand.account_state(cli, vault.address, cfg.network.payment_asa)
     if state.opted_in:
-        raise SystemExit(f"Vault is already opted into ASA {cfg.network.payment_asa}.")
+        raise WalletError(f"Vault is already opted into ASA {cfg.network.payment_asa}.")
     if state.algo_micro < VAULT_MIN_ALGO_MICRO:
-        raise SystemExit(
+        raise WalletError(
             f"Vault holds {state.algo_micro / 1e6:.6f} ALGO; needs at least "
             f"{VAULT_MIN_ALGO_MICRO / 1e6:.2f} to opt in. This is step 1."
         )
@@ -112,7 +113,7 @@ def open_session(cfg: Config, balance_micro: int) -> tuple[SessionRecord, str]:
     # Decision 6: one session per vault, serialised. It removes the nonce and
     # ordering problem on vault-signed funding groups rather than solving it.
     if live := ledger.live_sessions():
-        raise SystemExit(
+        raise WalletError(
             f"Session {live[0].index} ({live[0].address}) is still live. Close it "
             "or run `obol reap` first - v1 runs one session at a time."
         )
@@ -121,20 +122,20 @@ def open_session(cfg: Config, balance_micro: int) -> tuple[SessionRecord, str]:
     asset = cfg.network.payment_asa
     state = algorand.account_state(cli, vault.address, asset)
     if not state.opted_in:
-        raise SystemExit(
+        raise WalletError(
             f"Vault is not opted into ASA {asset}. Run `obol vault` for the "
             "bootstrap steps - a session cannot return its balance to a vault that "
             "cannot receive it."
         )
     if state.asset_micro < balance_micro:
-        raise SystemExit(
+        raise WalletError(
             f"Vault holds {cfg.network.fmt(state.asset_micro)} of ASA {asset}, "
             f"needs {cfg.network.fmt(balance_micro)}."
         )
     # Two vault-signed fees plus the funding itself.
     needed_algo = SESSION_FUNDING_MICRO + 2 * algorand.MIN_FEE_MICRO
     if state.spendable_algo_micro < needed_algo:
-        raise SystemExit(
+        raise WalletError(
             f"Vault has {state.spendable_algo_micro / 1e6:.6f} ALGO above its "
             f"minimum balance; opening a session needs {needed_algo / 1e6:.6f}."
         )
@@ -168,7 +169,7 @@ def live_session(cfg: Config) -> tuple[Key, SessionRecord, Ledger]:
     ledger = Ledger.load(cfg.ledger_path)
     live = [s for s in ledger.live_sessions() if s.state == "open"]
     if not live:
-        raise SystemExit(
+        raise WalletError(
             "No open session. Run `obol session open --balance <amount>` first.\n"
             "A session is what bounds the loss: payments spend from it, never from "
             "the vault."
@@ -176,7 +177,7 @@ def live_session(cfg: Config) -> tuple[Key, SessionRecord, Ledger]:
     record = live[0]
     key = derive_session_key(vault.seed, record.index)
     if key.address != record.address:
-        raise SystemExit(
+        raise WalletError(
             f"Session {record.index} in the ledger is {record.address}, but this "
             f"vault derives {key.address}. Refusing to sign for another vault's "
             "session."
@@ -192,12 +193,12 @@ def close_session(cfg: Config, index: int | None = None) -> tuple[SessionRecord,
     if index is None:
         live = ledger.live_sessions()
         if not live:
-            raise SystemExit("No live session to close.")
+            raise WalletError("No live session to close.")
         record = live[0]
     else:
         record = ledger.get(index)
         if record is None:
-            raise SystemExit(f"No session with index {index} in the ledger.")
+            raise WalletError(f"No session with index {index} in the ledger.")
 
     txid = _sweep(cfg, vault, ledger, record)
     return record, txid
@@ -236,7 +237,7 @@ def _sweep(cfg: Config, vault: Key, ledger: Ledger, record: SessionRecord) -> st
     if session.address != record.address:
         # Derivation is deterministic, so a mismatch means the ledger belongs to a
         # different vault. Sweeping would sign for an account we cannot control.
-        raise SystemExit(
+        raise WalletError(
             f"Session {record.index} in the ledger is {record.address}, but this "
             f"vault derives {session.address}. Refusing to act on another vault's "
             "ledger."

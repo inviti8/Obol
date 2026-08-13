@@ -18,10 +18,12 @@ dependencies = [
     "x402-avm[avm,httpx]==2.0.2",
     "httpx>=0.27",
     "pynacl>=1.6.2",
+    "mcp>=2.0.0",
 ]
 
 [project.scripts]
 obol = "obol.cli:main"
+obol-mcp = "obol.mcp.server:main"
 
 [dependency-groups]
 dev = [
