@@ -12,7 +12,9 @@ agent → x402_fetch(url) → 402 → sign → pay → body
 
 x402 has 1,204 listed resources and almost no buyers — 13 wallets account for 90%
 of all volume, and they are scripted loops rather than agents. The rail exists;
-nothing can reach it. Obol is the buyer-side piece.
+nothing can reach it. Obol is the buyer-side piece: an embedded onramp so a card
+can fund the wallet, then account setup, opt-in, signing and sweeping handled
+invisibly so the agent just spends.
 
 - **[CLAUDE.md](./CLAUDE.md)** — orientation, and the x402 facts that cost real
   debugging time to learn.

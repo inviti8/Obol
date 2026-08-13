@@ -93,7 +93,7 @@ three such escape hatches on the transaction types a session key signs:
 
 An x402 payment is an `AssetTransferTxn`, so `close_assets_to` and `rekey_to` are
 both reachable by anything holding the session key. This is why a spend policy
-that only checks amount and receiver is worthless — see §5.
+that only checks amount and receiver is worthless — see §6.
 
 ### The reaper is not optional
 
@@ -156,7 +156,81 @@ Revisit when a self-serve trial becomes the growth bottleneck. Until then,
 manual grants — which is just sending USDC to an address, and scales to the
 hundreds.
 
-## 5. LogicSig — scope it, then probably defer it
+## 5. Funding the vault — the actual product goal
+
+The thesis is a **minimum-friction pay surface for an agent**. Removing account
+setup, opt-in and signing is only half of it: a user who cannot easily *get*
+USDC onto Algorand is still stuck. This section is therefore core scope, not a
+later nicety.
+
+### Stripe cannot do this, and that is a finding
+
+Stripe Crypto Onramp supports Bitcoin, Ethereum, Solana, Polygon, Stellar,
+Avalanche, Base, Aptos, Optimism, Worldchain and XRPL — with USDC specifically on
+Solana, Polygon, Avalanche and Base. **Algorand is not on the list** (checked
+2026-08-12; re-check, it moves).
+
+So "add Stripe" is not the task. The task is **embed an onramp that delivers
+USDC to an Algorand address.** Providers that do: Banxa, MoonPay, Sardine,
+Transak, Wyre — all five are already aggregated by Pera Onramp, which is proof
+the integration path works rather than a recommendation to use Pera specifically.
+
+Worth noting Stripe *does* support Stellar. If Pakana's x402 facilitation
+materialises, the funding story on that chain is materially easier than on
+Algorand — a point in Stellar's favour for v2 that has nothing to do with the
+protocol.
+
+### The legal boundary — never be in the money path
+
+This is the constraint that decides the architecture.
+
+| Pattern | What it is | Verdict |
+|---|---|---|
+| User buys USDC through a licensed onramp, delivered to **their own** vault address | we facilitate a link | **Do this** |
+| We take fiat and send USDC | selling crypto for money | money transmission; licensing in ~50 states |
+| We hold a pooled balance and pay on their behalf | custody | money transmission, plus the payer is us again |
+
+Only the first is viable for a small team, and it is also the simplest. **Obol
+embeds an onramp; it does not build one.** The provider does KYC, takes the card,
+and is the money transmitter. We never touch fiat or hold anyone's crypto.
+
+This also keeps the payer genuinely third-party, which is what stops funded usage
+from looking like a round trip (§4, and `CLAUDE.md` on why Obol is not an Authen
+client).
+
+### The flow
+
+```
+wallet_funding_info()
+  → returns an onramp URL with the vault address and a suggested amount
+    pre-filled, plus the current balance
+  → human opens it, does KYC once, pays by card
+  → USDC lands directly in the vault
+  → Obol polls the balance and reports when it clears
+```
+
+### The friction floor, stated honestly
+
+**First purchase requires KYC** — identity verification, a few minutes, a photo
+of an ID. That is regulatory and cannot be engineered away by anyone who is not
+themselves licensed. Subsequent top-ups are fast.
+
+So the real shape is: *one interactive setup of a few minutes, then the agent
+spends autonomously within its caps, indefinitely.* That is a genuine and
+defensible claim. "Zero friction" is not, and should never appear in the copy.
+
+### Why this matters beyond Obol
+
+Getting USDC onto Algorand is harder than onto Base or Solana, and no major
+onramp treats it as a first-class destination. That is a structural headwind for
+every x402 resource on this chain, and it is a plausible partial explanation for
+the field data in `CLAUDE.md`: 1,204 listed resources, but 13 wallets accounting
+for 90% of volume. The buyers who exist are the ones who were determined enough
+to solve funding themselves.
+
+Obol cannot fix the chain's onramp coverage. It can remove every step after it.
+
+## 6. LogicSig — scope it, then probably defer it
 
 An Algorand **LogicSig** is a signed program that approves only transactions
 matching its logic. As a *contract account* the address is the hash of the
@@ -207,7 +281,7 @@ If the probe says the facilitator rejects LogicSig envelopes, the question close
 permanently and balance caps carry the risk alone — which is the documented,
 deliberate position rather than an accident.
 
-## 6. MCP surface
+## 7. MCP surface
 
 Deliberately small. One tool is the product.
 
@@ -246,7 +320,7 @@ Escalate to the human only when: the session balance is exhausted, a single call
 exceeds the per-call cap, or a payTo is outside an allowlist that the user
 enabled.
 
-## 7. v1 scope
+## 8. v1 scope
 
 **Ships:**
 
@@ -256,23 +330,21 @@ enabled.
 - Ephemeral session accounts with atomic setup/teardown, plus the reaper
 - `x402_fetch`, `wallet_status`, `wallet_funding_info`
 - Spend caps enforced in process
-- Any vault can be funded by sending USDC to its address — ours or the user's,
-  same path, no feature required (§4)
+- **Embedded onramp** — one provider, vault address pre-filled (§5)
+- Any vault can also be funded by sending USDC to its address directly — ours or
+  the user's, same path, no feature required (§4)
 
-**Does not ship:** Stripe top-ups, any automatic dispenser, LogicSig policy,
-Stellar, bearer instruments.
+**Does not ship:** any automatic dispenser or granted balance, LogicSig policy,
+Stellar, bearer instruments, multiple onramp providers with quote comparison.
 
 ### What v1 does not solve, stated plainly
 
-Obol removes the *operational* friction — account creation, ASA opt-in,
-transaction signing, session hygiene, sweeping. It does **not** solve
-*acquisition*: the user must already be able to get USDC onto Algorand.
+The KYC step in §5. Everything after it is automated; that one is regulatory and
+belongs to the onramp provider.
 
-For a crypto-adjacent developer that is a small ask. For a Claude Code user with
-only a credit card it is a wall, and the thing that removes it is a **Stripe
-top-up**, not a free trial. Those are different features and only one of them is
-about abuse control. Do not let "we should give people money to try it" become
-the answer to "people cannot easily buy USDC" — the second has a real fix.
+Do not let "we should give people money to try it" become the answer to "people
+cannot easily buy USDC". Those are different problems, and only the second one is
+real — it is solved by the embedded onramp, not by a grant.
 
 ### Python, not TypeScript
 
@@ -285,7 +357,7 @@ on a short clock.
 
 Revisit for v2 once the wallet abstraction has proven itself against one rail.
 
-## 8. Open questions
+## 9. Open questions
 
 1. **Does the facilitator accept LogicSig envelopes?** Probe early — §5 says
    defer the build regardless, but the answer is permanent and costs an afternoon.
@@ -295,13 +367,14 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
 3. **Does `x402-avm` work cleanly inside an MCP server's event loop?** The Authen
    work used `x402ClientSync`. MCP servers are async; the sync client may need a
    thread or the async variant needs its own validation.
-4. **Is Stripe top-up the v2 priority?** §7 argues acquisition, not trial float,
-   is the real barrier for non-crypto users. If so it outranks the dispenser,
-   LogicSig and Stellar.
+4. **Which onramp provider for v1?** Banxa, MoonPay, Sardine, Transak and Wyre
+   all reach Algorand. Decide on widget quality, geographic coverage, minimum
+   purchase and fee, not on brand. Minimums matter: several sit around $5-15,
+   which is large relative to a $5 session balance.
 5. **Multiple concurrent sessions per vault** — needed? Adds nonce/ordering
    concerns on vault-signed funding transactions.
 
-## 9. First tasks, in order
+## 10. First tasks, in order
 
 1. LogicSig facilitator probe on testnet (§5). Cheap, and the answer is permanent.
    Do not block the build on it — §5 recommends deferring the policy work.
@@ -311,4 +384,6 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
    explicitly — kill the process mid-session and confirm the next start recovers
    the balance.
 4. Wrap in an MCP server; verify against a real MCP client.
-5. Spend caps and the consent model.
+5. Embedded onramp (§5) — pick a provider, prove a card purchase lands USDC in a
+   vault address. This is the half of the thesis that is not about signing.
+6. Spend caps and the consent model.
