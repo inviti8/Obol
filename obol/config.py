@@ -104,6 +104,11 @@ class Config:
     network: NetworkProfile
     data_dir: Path
     caps: Caps
+    # The one directory `body_file` may read from and `output_file` may write to.
+    # None - the default - disables both parameters outright. See obol/files.py:
+    # moving bytes off the machine is not something a spend cap can bound, so a
+    # default install does not offer the capability at all.
+    file_root: Path | None = None
     # How long a session may sit unused before the server closes it and sweeps the
     # balance back. MCP gives no reliable session-end signal on any transport
     # (DESIGN.md section 9), so this plus reaping on next start is the answer. Ten
@@ -177,6 +182,12 @@ def load_config(network: str | None = None, data_dir: Path | None = None) -> Con
     idle = int(
         raw.get("session", {}).get("idle_timeout_seconds", Config.idle_timeout_seconds)
     )
+    root_raw = raw.get("files", {}).get("root")
+    file_root = Path(root_raw).expanduser() if root_raw else None
     return Config(
-        network=profile, data_dir=data_dir, caps=caps, idle_timeout_seconds=idle
+        network=profile,
+        data_dir=data_dir,
+        caps=caps,
+        idle_timeout_seconds=idle,
+        file_root=file_root,
     )

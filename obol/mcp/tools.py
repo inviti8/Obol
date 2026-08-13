@@ -41,7 +41,22 @@ wallet does not hold; the payTo address is one of ours (paying yourself is not a
 payment); or a mainnet resource is not https. Each refusal says which rule it hit.
 
 Unpaid URLs are fine - if the server answers normally, the body is returned and
-nothing is spent."""
+nothing is spent.
+
+FILES. `body_file` sends the bytes at a path instead of `body`, and
+`output_file` writes the response to a path instead of returning it inline. Use
+them for anything binary or large - an image to be signed, a document to be
+processed - because binary cannot survive being passed as text and a large body
+would swamp the conversation. Both are confined to a directory the user
+configured, and both are DISABLED unless they configured one; a path outside it
+is refused. Pass `body` or `body_file`, never both.
+
+`content_type` sets the request's Content-Type. Some paid endpoints require it
+and reject the request without it - AFTER taking payment, because the payment is
+verified before the handler runs. Set it whenever the body is not plain text.
+
+Response headers the merchant set are returned under `response_headers`; some
+endpoints put results there that appear nowhere in the body."""
 
 WALLET_STATUS_DESCRIPTION = """\
 Report the wallet's state: network, vault address and balances, the active
@@ -73,6 +88,9 @@ def register(server: Any, wallet: Wallet) -> None:
         method: str = "GET",
         body: str | None = None,
         max_price_usdc: float | None = None,
+        body_file: str | None = None,
+        output_file: str | None = None,
+        content_type: str | None = None,
     ) -> dict[str, Any]:
         max_price = (
             wallet.cfg.network.to_units(max_price_usdc)
@@ -81,7 +99,13 @@ def register(server: Any, wallet: Wallet) -> None:
         )
         try:
             return await wallet.fetch(
-                url, method=method, body=body, max_price_micro=max_price
+                url,
+                method=method,
+                body=body,
+                max_price_micro=max_price,
+                body_file=body_file,
+                output_file=output_file,
+                content_type=content_type,
             )
         except CapExceeded as exc:
             # Named separately so the agent can tell "raise your limit" apart from

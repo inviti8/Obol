@@ -18,3 +18,8 @@ __pycache__/
 *.mnemonic
 *_seed.bin
 probes/out/
+
+# Local test media. Large binaries that exist only to be POSTed at a paid
+# endpoint during a walkthrough - not part of the project.
+*.png
+!demo/*.svg

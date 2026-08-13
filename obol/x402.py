@@ -92,6 +92,7 @@ class PaymentResult:
     txid: str = ""
     receipt: dict[str, Any] = field(default_factory=dict)
     payer: str = ""
+    headers: dict[str, str] = field(default_factory=dict)
 
     def json(self) -> Any:
         return json.loads(self.content)
@@ -250,6 +251,30 @@ def _build_payment_header(
     ).decode()
 
 
+# Transport noise a caller never wants; everything else is the merchant talking.
+_BORING_HEADERS = frozenset(
+    {
+        "date", "server", "connection", "content-length", "transfer-encoding",
+        "content-type", "keep-alive", "vary",
+    }
+)
+
+
+def _useful_headers(response: httpx.Response) -> dict[str, str]:
+    """Response headers worth passing on.
+
+    Merchants put things here that exist nowhere else - Authen returns a C2PA
+    image with its attestation in `X-Authen-Attestation`, which is unrecoverable
+    from the body. Discarding all headers threw that away.
+    """
+    return {
+        k: v
+        for k, v in response.headers.items()
+        if k.lower() not in _BORING_HEADERS
+        and not k.lower().startswith("payment-")  # decoded separately
+    }
+
+
 def _read_receipt(response: httpx.Response) -> dict[str, Any]:
     for name in RECEIPT_HEADERS:
         if raw := response.headers.get(name):
@@ -316,6 +341,7 @@ async def fetch(
                 content=first.content,
                 content_type=first.headers.get("content-type", ""),
                 paid=False,
+                headers=_useful_headers(first),
             )
 
         challenge = parse_challenge(first)
@@ -383,4 +409,5 @@ async def fetch(
             txid=str(receipt.get("transaction") or receipt.get("txHash") or ""),
             receipt=receipt,
             payer=signer.address,
+            headers=_useful_headers(second),
         )

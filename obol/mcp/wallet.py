@@ -31,6 +31,7 @@ from typing import Any
 from .. import algorand
 from ..caps import SpendContext
 from ..errors import WalletError
+from ..files import read_body, resolve_within, write_output
 from ..config import VAULT_MIN_ALGO_MICRO, Config
 from ..keys import Key
 from ..ledger import Ledger, SessionRecord
@@ -43,6 +44,11 @@ from ..session import (
     vault_status,
 )
 from ..x402 import PaymentResult, fetch
+
+
+# Enough for a JSON attestation or a page of text; short of anything that would
+# swamp an agent's context. Bigger bodies go to output_file.
+INLINE_BODY_LIMIT = 64_000
 
 
 @dataclass
@@ -217,7 +223,24 @@ class Wallet:
         method: str = "GET",
         body: str | None = None,
         max_price_micro: int | None = None,
+        body_file: str | None = None,
+        output_file: str | None = None,
+        content_type: str | None = None,
     ) -> dict[str, Any]:
+        if body_file is not None and body is not None:
+            raise WalletError("Pass body or body_file, not both.")
+        # Read BEFORE anything else: a path that escapes the root must refuse
+        # without touching the network or the wallet.
+        payload: bytes | None = None
+        if body_file is not None:
+            payload = await asyncio.to_thread(read_body, self.cfg.file_root, body_file)
+        elif body is not None:
+            payload = body.encode()
+        # An output path is validated up front too, so a doomed write is not
+        # discovered after a payment has already settled.
+        if output_file is not None:
+            resolve_within(self.cfg.file_root, output_file, purpose="output_file")
+
         vault, _ = await asyncio.to_thread(open_vault, self.cfg)
         self._last_used = time.monotonic()
 
@@ -253,7 +276,8 @@ class Wallet:
             provider,
             url,
             method=method,
-            body=body.encode() if body is not None else None,
+            body=payload,
+            headers={"Content-Type": content_type} if content_type else None,
             max_price_micro=max_price_micro,
             our_addresses={vault.address},
             spend=spend,
@@ -267,22 +291,52 @@ class Wallet:
                 )
         self._last_used = time.monotonic()
 
-        payload: dict[str, Any] = {
+        out: dict[str, Any] = {
             "url": result.url,
             "status": result.status_code,
             "paid": result.paid,
             "content_type": result.content_type,
-            "body": result.content.decode("utf-8", "replace"),
+            "bytes": len(result.content),
         }
+        if result.headers:
+            out["response_headers"] = result.headers
+
+        if output_file is not None:
+            written = await asyncio.to_thread(
+                write_output, self.cfg.file_root, output_file, result.content
+            )
+            out["written_to"] = str(written)
+        else:
+            # Never hand back replacement characters. A C2PA-signed image is not
+            # text, and decoding it with errors="replace" produces a body that
+            # looks like data and is not - which is worse than saying so.
+            try:
+                text = result.content.decode("utf-8")
+            except UnicodeDecodeError:
+                out["body_encoding"] = "binary"
+                out["note"] = (
+                    "The response is binary and was not returned inline. Re-run "
+                    "with output_file to write it to disk."
+                )
+            else:
+                if len(text) > INLINE_BODY_LIMIT:
+                    out["body"] = text[:INLINE_BODY_LIMIT]
+                    out["truncated"] = True
+                    out["note"] = (
+                        f"Body truncated at {INLINE_BODY_LIMIT} characters. Use "
+                        "output_file to get all of it."
+                    )
+                else:
+                    out["body"] = text
         if result.paid:
-            payload |= {
+            out |= {
                 "price": self.cfg.network.fmt(result.price_micro),
                 "pay_to": result.pay_to,
                 "payer": result.payer,
                 "txid": result.txid,
                 "settled": result.receipt.get("success"),
             }
-        return payload
+        return out
 
 
 async def probe_vault_ready(cfg: Config) -> bool:
