@@ -21,7 +21,7 @@ import json
 import sys
 from pathlib import Path
 
-from .config import PROFILES, Config, load_config
+from .config import PROFILES, VAULT_MIN_ALGO_MICRO, Config, load_config
 from .errors import ObolError
 from .ledger import Ledger
 from .session import (
@@ -198,6 +198,55 @@ def cmd_fetch(cfg: Config, args) -> int:
     return 0
 
 
+def cmd_vault_qr(cfg: Config, args) -> int:
+    """Show scannable funding URIs for the vault, as QR codes in the terminal.
+
+    Two codes, not one. ALGO and the payment asset are different assets sent in a
+    forced order (DESIGN.md section 3.1), and a single QR cannot say "this one
+    first".
+    """
+    from .funding import default_logo, funding_targets, qr_styled_png, qr_terminal
+
+    vault, _ = open_vault(cfg)
+    targets = funding_targets(
+        vault.address,
+        cfg.network.payment_asa,
+        network=cfg.network.name,
+        algo_needed_micro=VAULT_MIN_ALGO_MICRO,
+    )
+    if args.asset_only:
+        targets = [t for t in targets if t.what != "ALGO"]
+    elif args.algo_only:
+        targets = [t for t in targets if t.what == "ALGO"]
+
+    print(f"network   {cfg.network.name}")
+    print(f"vault     {vault.address}")
+    if cfg.network.is_mainnet:
+        print()
+        print("*** MAINNET - anything sent here is real money ***")
+    for target in targets:
+        print()
+        print(f"--- send {target.what} " + "-" * max(0, 44 - len(target.what)))
+        print(f"  {target.why}")
+        if target.suggested:
+            print(f"  suggested: {target.suggested}")
+        print(f"  {target.uri}")
+        print()
+        print(qr_terminal(target.uri))
+        if args.write:
+            out = Path(args.write)
+            out.mkdir(parents=True, exist_ok=True)
+            name = "algo" if target.what == "ALGO" else f"asa-{cfg.network.payment_asa}"
+            path = out / f"obol-fund-{cfg.network.name}-{name}.png"
+            path.write_bytes(qr_styled_png(target.uri, logo=default_logo()))
+            print(f"  written to {path}")
+
+    print()
+    print("No amount is encoded in either code - type it into your wallet, where")
+    print("you can see it before confirming.")
+    return 0
+
+
 def cmd_address(cfg: Config, args) -> int:
     """Just the address, for piping into a faucet or a funding script."""
     vault, _ = open_vault(cfg)
@@ -224,6 +273,11 @@ def build_parser() -> argparse.ArgumentParser:
     vault_sub.add_parser("address", help="print the vault address only").set_defaults(
         fn=cmd_address
     )
+    v_qr = vault_sub.add_parser("qr", help="scannable funding QR codes")
+    v_qr.add_argument("--algo-only", action="store_true", help="just the ALGO code")
+    v_qr.add_argument("--asset-only", action="store_true", help="just the asset code")
+    v_qr.add_argument("--write", default=None, metavar="DIR", help="also save PNGs")
+    v_qr.set_defaults(fn=cmd_vault_qr)
 
     session = sub.add_parser("session", help="session lifecycle")
     session_sub = session.add_subparsers(dest="session_command", required=True)

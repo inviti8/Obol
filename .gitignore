@@ -23,3 +23,6 @@ probes/out/
 # endpoint during a walkthrough - not part of the project.
 *.png
 !demo/*.svg
+# ...except brand assets shipped inside the package. The QR renderer composites
+# these, so they must be installed with the wheel, not sat in a demo folder.
+!obol/assets/*.png

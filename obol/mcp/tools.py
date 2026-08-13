@@ -76,7 +76,17 @@ part of it can be automated by the agent.
 The three steps are in a forced order: ALGO must arrive before the vault can opt
 into the payment asset, and the opt-in must happen before USDC can be received at
 all. USDC sent to a vault that has not opted in is rejected outright - it does
-not sit pending, it fails."""
+not sit pending, it fails.
+
+Each step a human performs carries a `scan` value: an ARC-26 URI an Algorand
+wallet can scan. It encodes the address AND the asset id, so the sender cannot
+aim at the wrong asset by hand - which matters because sending the wrong one is
+rejected rather than held. No amount is encoded; the human types that into their
+own wallet where they see it before confirming.
+
+`qr_dir` optionally writes those URIs as PNG QR codes into that directory, under
+the same configured file root as body_file/output_file. `obol vault qr` prints
+the same codes straight into a terminal."""
 
 
 def register(server: Any, wallet: Wallet) -> None:
@@ -160,8 +170,8 @@ def register(server: Any, wallet: Wallet) -> None:
     @server.tool(
         name="wallet_funding_info", description=WALLET_FUNDING_INFO_DESCRIPTION
     )
-    async def wallet_funding_info() -> dict[str, Any]:
+    async def wallet_funding_info(qr_dir: str | None = None) -> dict[str, Any]:
         try:
-            return await wallet.funding_info()
+            return await wallet.funding_info(qr_dir=qr_dir)
         except WalletError as exc:
             return {"error": "wallet_not_ready", "message": str(exc)}

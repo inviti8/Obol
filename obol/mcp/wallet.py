@@ -167,9 +167,17 @@ class Wallet:
             },
         }
 
-    async def funding_info(self) -> dict[str, Any]:
+    async def funding_info(self, qr_dir: str | None = None) -> dict[str, Any]:
+        from ..funding import default_logo, funding_targets, qr_styled_png
+
         st = await asyncio.to_thread(vault_status, self.cfg)
         asset = self.cfg.network.payment_asa
+        targets = funding_targets(
+            st.address,
+            asset,
+            network=self.cfg.network.name,
+            algo_needed_micro=VAULT_MIN_ALGO_MICRO,
+        )
         steps = [
             {
                 "step": 1,
@@ -183,6 +191,7 @@ class Wallet:
                     "The vault cannot pay the fee for its own asset opt-in without "
                     "it, and 0.1 ALGO is locked as the asset slot minimum."
                 ),
+                "scan": targets[0].uri,
             },
             {
                 "step": 2,
@@ -200,9 +209,10 @@ class Wallet:
                 "who": "human",
                 "action": f"Send USDC (ASA {asset}) to {st.address}.",
                 "why": "With the opt-in done, the transfer will arrive.",
+                "scan": targets[1].uri,
             },
         ]
-        return {
+        info: dict[str, Any] = {
             "network": self.cfg.network.name,
             "vault_address": st.address,
             "payment_asset": asset,
@@ -215,7 +225,28 @@ class Wallet:
                 "An onramp delivers USDC and not ALGO, so step 1 still needs doing "
                 "even when a card is used."
             ),
+            "scan_note": (
+                "`scan` values are ARC-26 URIs a wallet can scan. They carry the "
+                "address and the asset id but deliberately NO amount - the human "
+                "types that into their own wallet, where they see it before "
+                "confirming. Run `obol vault qr` for the same thing as a QR code "
+                "in a terminal."
+            ),
         }
+        if qr_dir is not None:
+            written = []
+            for target in targets:
+                name = "algo" if target.what == "ALGO" else f"asa-{asset}"
+                rel = f"{qr_dir.rstrip('/')}/obol-fund-{self.cfg.network.name}-{name}.png"
+                path = await asyncio.to_thread(
+                    write_output,
+                    self.cfg.file_root,
+                    rel,
+                    qr_styled_png(target.uri, logo=default_logo()),
+                )
+                written.append(str(path))
+            info["qr_written"] = written
+        return info
 
     async def fetch(
         self,

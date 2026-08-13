@@ -19,11 +19,17 @@ dependencies = [
     "httpx>=0.27",
     "pynacl>=1.6.2",
     "mcp>=2.0.0",
+    "segno>=1.6.6",
 ]
 
 [project.scripts]
 obol = "obol.cli:main"
 obol-mcp = "obol.mcp.server:main"
+
+[project.optional-dependencies]
+qr = [
+    "pillow>=12.3.0",
+]
 
 [dependency-groups]
 dev = [
@@ -37,3 +43,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["obol"]
+
+# The brand asset the QR renderer composites must ship with the wheel; without
+# this the styled code silently loses its logo on an installed copy.
+artifacts = ["obol/assets/*.png"]
