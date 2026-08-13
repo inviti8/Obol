@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from ..errors import CapExceeded, PaymentRefused, PaymentRejected, WalletError
 from .wallet import Wallet
 
@@ -100,6 +102,15 @@ def register(server: Any, wallet: Wallet) -> None:
                 "message": str(exc),
                 "spent": False,
                 "hint": "Call wallet_funding_info for the setup steps.",
+            }
+        except httpx.RequestError as exc:
+            # The resource was unreachable, so nothing was challenged, validated or
+            # signed. Worth its own branch because it is by far the most common
+            # failure in practice and reads as alarming when it surfaces raw.
+            return {
+                "error": "unreachable",
+                "message": f"Could not reach {url}: {exc.__class__.__name__}: {exc}",
+                "spent": False,
             }
         except PaymentRejected as exc:
             # We signed and sent. The money may have moved even though no resource

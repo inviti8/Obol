@@ -1,0 +1,16 @@
+Obol testnet walkthrough
+========================
+
+This file exists to be notarized.
+
+An Authen node will observe the SHA-256 of these bytes and return a signed,
+timestamped attestation saying so. The attestation asserts observation and time
+only - not authorship, not ownership, not that anything here is true.
+
+Change a single character below and the digest changes, which is the whole point.
+
+  vault      pays nothing, signs no payments, holds the balance
+  session    short-lived, funded per session, signs the payment
+  facilitator sponsors the transaction fee, so the buyer spends no ALGO
+
+Written 2026-08-13 for the first run of the Obol MCP server on Algorand testnet.
