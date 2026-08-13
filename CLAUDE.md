@@ -92,7 +92,14 @@ The friction in this ecosystem is *steps*, not cost.
 
 **An account cannot receive an ASA it has not opted into.** The transfer is
 rejected outright — there is no pending state to wait on. Opt in first, then ask
-for tokens.
+for tokens. This applies to the vault as much as to a session — see `DESIGN.md`
+§3.1, where it forces a three-step bootstrap in a fixed order.
+
+**Never hardcode the payment ASA.** Mainnet USDC is `31566704`, but the Authen
+testnet rail runs on a self-minted 6-decimal stand-in (`769120200`) because the
+faucet rate-limited during that build; both accounts hold zero real testnet USDC
+(`10458941`). The `exact` scheme takes any ASA id, so the asset is a network
+profile setting checked against `accepts[].asset`, not a constant.
 
 **`/discovery/resources?network=` needs the CAIP-2 id.** The `algorand-mainnet`
 slug silently returns `total: 0`. `/data/*` endpoints take the slug instead.
@@ -114,11 +121,30 @@ natively, which is otherwise the weak point in Obol's unlinkability story.
 One Ed25519 key is simultaneously a Stellar and an Algorand address, so the key
 layer is already chain-agnostic. It is the payment protocol that differs.
 
+## The near-term goal, and the deadline that is not ours
+
+**Obol should make its own first mainnet payment**, against the live Authen node
+at `https://authen.hvym.link/api/v1/notarize` ($0.05, ASA `31566704`, tag
+`x402-global-challenge`). A wallet whose first act is a real purchase from a real
+merchant is the demo.
+
+Authen has a hard competition gate of **2026-09-01, 11:45pm EST** requiring one
+real settled mainnet payment. That gate is **already closable without Obol** —
+`D:/repos/Authen/tools/pay_mainnet.py --pay --confirm` is finished and
+preflighted. Obol is the preferred route, never the dependency. If Obol is not
+ready by roughly 2026-08-28, close the gate with the backstop and let Obol take
+the second payment.
+
+**Development happens on testnet.** Mainnet is guarded, not disabled.
+
+**Closed source for now**; the licence is undecided. No `LICENSE` file, no
+public-repo furniture.
+
 ## Related work in the estate
 
 | Repo | Relevance |
 |---|---|
-| `D:/repos/Authen` | The reference integration. Its `tools/pay_once.py` and `tools/pay_mainnet.py` contain a working x402 client and `BuyerSigner`. Port, do not rewrite. |
+| `D:/repos/Authen` | The reference integration, live at `authen.hvym.link`. Its `tools/pay_once.py` and `tools/pay_mainnet.py` contain a working x402 client and `BuyerSigner`; `config/node.example.toml` is the model for network profiles. Port, do not rewrite. Formerly `PintheonV2` — that path is gone. |
 | `D:/repos/kenter` | Additive n-of-n Ed25519 key composition, bearer instruments. The eventual answer to real unlinkability. |
 | `D:/repos/heavymeta` | Flutter co-op wallet. Zero-custody invariants worth reading before designing float handling. |
 

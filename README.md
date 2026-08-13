@@ -22,4 +22,5 @@ invisibly so the agent just spends.
 - **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** — build order, what to
   port from Authen, and the two probes to run before writing module code.
 
-Status: **design only, nothing built.**
+Status: **design only, nothing built** — build decisions taken, first module code
+next. The target for v1 is Obol making its own first payment on Algorand mainnet.

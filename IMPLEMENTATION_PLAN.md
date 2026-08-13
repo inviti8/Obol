@@ -4,11 +4,12 @@ Build order for the design in [`DESIGN.md`](./DESIGN.md). Read
 [`CLAUDE.md`](./CLAUDE.md) first for the x402 facts that are expensive to
 rediscover.
 
-**Written:** 2026-08-12. **Status:** nothing built.
+**Written:** 2026-08-12. **Status:** nothing built; build decisions taken (§0).
 
-> **Path note.** The Authen repo is on GitHub as `inviti8/Authen` but its local
-> directory is still **`D:/repos/PintheonV2`**. Every reference below uses the
-> local path. `D:/repos/Authen` does not exist.
+> **Path note.** The Authen repo is `inviti8/Authen` on GitHub and
+> **`D:/repos/Authen`** on disk. The rename from `PintheonV2` has happened and
+> `D:/repos/PintheonV2` no longer exists — an earlier draft of this file asserted
+> the reverse. Checked 2026-08-12.
 
 ---
 
@@ -39,14 +40,72 @@ instead of a raw key, submit to testnet, observe.
 **The answer does not block v1** — §6 recommends deferring the policy build
 regardless. It is worth knowing because it is permanent and cheap.
 
+### Decisions taken — 2026-08-12
+
+| # | Decision | Consequence |
+|---|---|---|
+| 1 | **Run P0.1 before any module code.** | An hour, and the answer shapes every call site. P0.2 (LogicSig) stays cheap-and-optional. |
+| 2 | **Vault key is a file on disk for v1**; `keyring` is for the finished product. | Port `authen/keys.py` verbatim, `O_BINARY` and all. Keychain is a later backend swap behind the same interface. |
+| 3 | **All development runs on testnet rails.** Point at mainnet only for the demo and the first real payment. | No mainnet spend happens by accident, but mainnet is never blocked in code — see decision 4. |
+| 4 | **Obol itself takes the first mainnet payment** against `https://authen.hvym.link`. | Mainnet is a supported target from day one, guarded like `pay_mainnet.py` rather than disabled. |
+| 5 | **Closed source for now**; licence undecided. | No `LICENSE` file. Do not add public-repo furniture until the licence is chosen. |
+| 6 | **One session per vault at a time** for v1, serialised. | Sidesteps nonce/ordering on vault-signed funding groups entirely. Revisit only if a real client needs concurrency. |
+
+**On decision 4 — what the September 1 deadline actually requires.** Authen's
+gate (`D:/repos/Authen/CLAUDE.md`) is **2026-09-01, 11:45pm EST**: one real
+completed payment against a live mainnet endpoint. That endpoint is already up
+and challenging correctly (verified below), so the gate is one payment away by
+either route:
+
+- **Preferred:** Obol's `x402_fetch` makes it. The wallet's first act is a real
+  purchase from a real merchant — which is also the strongest possible demo.
+- **Backstop:** `D:/repos/Authen/tools/pay_mainnet.py --pay --confirm`, which is
+  finished and preflighted today.
+
+The backstop exists so the deadline never depends on Obol shipping. **Do not let
+Obol's schedule put the gate at risk** — if Phase 4 is not solid by roughly
+2026-08-28, run the backstop and let Obol take the *second* payment.
+
+### Verified state of the rails — 2026-08-12
+
+Measured, not assumed. Re-check before relying on any of it.
+
+**Authen mainnet is live.** `POST https://authen.hvym.link/api/v1/notarize`
+returns `402` with a well-formed challenge:
+
+| Field | Value |
+|---|---|
+| `asset` | `31566704` (real mainnet USDC) |
+| `amount` | `50000` micro-USDC = $0.05 |
+| `payTo` | `E64BQIOXKTT4BVMIFY2S5WX337FT6MLF66UPZEUPDYAKT4QIFOXXQCR24Q` |
+| `extra.tag` | `x402-global-challenge` — correctly nested inside `accepts[]` |
+| `extra.feePayer` | `ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA` |
+
+**Testnet does not use testnet USDC — and this changes the code.** Both Authen
+testnet accounts are opted into real testnet USDC (`10458941`) and hold **zero**
+of it. The balance that exists is a self-minted 6-decimal stand-in,
+**ASA `769120200`**:
+
+| Account | ALGO | ASA `769120200` |
+|---|---:|---:|
+| treasury `NJO3MQ…NNNFYI` | 7.995 | 999,903.2 |
+| buyer `GSSX5NVB…UKXJTM` | 1.998 | 96.8 |
+
+Two consequences, both load-bearing:
+
+1. **Never hardcode a USDC asset id.** `DESIGN.md` §3 originally had the session
+   opt into `31566704` at setup. On the only rail we can develop against, that
+   opt-in is for the wrong asset and every payment fails. The payment asset is a
+   **network-profile setting**, cross-checked against `accepts[].asset` in the
+   challenge — see `DESIGN.md` §3.
+2. **Testnet funding is solved and needs no faucet.** The Authen treasury can
+   fund an Obol vault with both ALGO and the stand-in ASA. This retires risk #3.
+
 ### Decisions still open
 
 - **MCP session boundary.** No transport gives a reliable session-end signal.
   Working assumption: idle timeout plus reaping on next start. Revisit once a
   real client is in the loop (Phase 4).
-- **Testnet USDC.** The Authen work minted a stand-in ASA when the USDC faucet
-  was rate-limited (`D:/repos/PintheonV2/tools/testnet_setup.py`). Same fallback
-  applies; the `exact` scheme takes any ASA id.
 
 ---
 
@@ -73,17 +132,47 @@ tests/
 before MCP exists. It keeps the wallet testable without an MCP client in the
 loop, and it stays useful for support and debugging afterwards.
 
+### Packaging
+
+`uv` project, `requires-python >= 3.11` (tomllib in the stdlib; local toolchain
+is 3.13). Pin `x402-avm[avm,httpx]==2.0.2` — the same version the Authen work was
+verified against, and the version every claim in `CLAUDE.md` was measured on.
+Console script `obol`, so the CLI and the MCP entry point ship together.
+
+Closed source for now (decision 5): no `LICENSE`, no badges, no publish workflow.
+
+### Network profiles are config, not constants
+
+Learned from `D:/repos/Authen/config/node.example.toml`, and reinforced by the
+stand-in ASA above. Each profile carries `caip2`, `slug`, `payment_asa`,
+`decimals`, `algod_url`. Two traps worth restating in the config comments:
+
+- `/discovery/resources` takes the **CAIP-2 id**; the `algorand-mainnet` slug
+  silently returns `total: 0`. `/data/*` takes the slug instead.
+- The x402 `asset` field is an ASA id **as a string**, not an int.
+
 ---
 
 ## 2. What to port, not rewrite
 
-| From `D:/repos/PintheonV2` | Into | Notes |
+| From `D:/repos/Authen` | Into | Notes |
 |---|---|---|
 | `tools/pay_once.py` → `BuyerSigner` | `obol/signer.py` | Near-direct port. Signs only requested group indexes; the fee-payer txn belongs to the facilitator. |
-| `tools/pay_once.py` → the 402 flow | `obol/x402.py` | Challenge decode, `create_payment_payload`, **`PAYMENT-SIGNATURE`** header, receipt decode. |
-| `tools/algo.py` | `obol/algorand.py` | `account_info`, `asset_holding`, formatting, ALGOD urls. |
+| `tools/pay_once.py` → the 402 flow | `obol/x402.py` | Challenge decode, `create_payment_payload`, **`PAYMENT-SIGNATURE`** header, receipt decode. Note it reads the receipt from `PAYMENT-RESPONSE` *or* `X-PAYMENT-RESPONSE`; keep both. |
+| `tools/algo.py` | `obol/algorand.py` | `account_info`, `asset_holding`, formatting, ALGOD urls. `asset_holding` returning `None` means *not opted in*, which is the failure that matters. |
 | `authen/keys.py` | `obol/keys.py` | Ed25519 identity, Stellar/Algorand address encoding, **atomic write with `O_BINARY`** — see the bug note below. |
-| `tools/pay_mainnet.py` | `obol/cli.py` | The preflight/guard pattern: check everything before spending, refuse without explicit confirmation. |
+| `tools/pay_mainnet.py` | `obol/cli.py`, `obol/caps.py` | The preflight/guard pattern: check everything before spending, refuse without explicit confirmation. Its five safety rails are the spec for §3 Phase 3. |
+
+**Port `pay_mainnet.py`'s rails, not just its shape.** They are the difference
+between a wallet and a footgun, and one of them is not in `DESIGN.md` at all:
+
+| Rail | Why it exists |
+|---|---|
+| Refuse a non-`https://` resource on mainnet | The facilitator catalogues the URL permanently on `/verify`. ~13% of the live index is loopback junk created this way. |
+| **Refuse when payer == payTo** | Paying yourself is not a payment, and it is the first thing an anti-wash review looks for. Obol must refuse a challenge whose `payTo` is its own vault or session address. |
+| Refuse a `payTo` that differs from what was expected | A substituted `payTo` sends money to a stranger and registers *their* merchant id. |
+| Preflight ALGO, asset balance and opt-in before building anything | A predictable failure then costs nothing. |
+| Require explicit confirmation to spend on mainnet | The one irreversible action in the system. |
 
 **Carry the `O_BINARY` lesson.** `authen/keys.py` writes its seed with
 `os.open(..., os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0))`.
@@ -102,8 +191,14 @@ current one passes on testnet.
 
 `config.py`, `keys.py`, `algorand.py`, `session.py`, `ledger.py`, `cli.py`.
 
-- Vault keypair generated on first run, stored via `keyring`, address printed
-- `session open` — one atomic group: fund ALGO → opt into USDC → transfer balance
+- Vault keypair generated on first run, seed written 0600 to the data dir
+  (file-backed for v1 — decision 2), address printed
+- `vault status` / `vault optin` — the bootstrap sequence in `DESIGN.md` §3.1.
+  A fresh vault holds no ALGO and no asset slot; **it cannot receive USDC until
+  it opts in, and cannot opt in until it holds ALGO.** Report which of the three
+  steps the user is on, every time, rather than failing obscurely
+- `session open` — one atomic group: fund ALGO → opt into the **profile's payment
+  asset** → transfer balance
 - `session close` — one atomic group: `close_assets_to` then `close_remainder_to`
 - `ledger` persists every session address **at creation**, before funding
 - `reap` sweeps orphaned sessions found in the ledger
@@ -113,6 +208,11 @@ full balance to the vault, and — separately — killing the process between op
 and close, then running `reap`, recovers it. Test that crash path explicitly;
 it is the one that silently loses money in production.
 
+Fund the test vault from the Authen testnet treasury (ALGO plus stand-in ASA
+`769120200`); no faucet is involved. Reconcile to the microunit — the sum of
+vault plus session must be conserved across a full open/close cycle, less exactly
+the fees actually paid.
+
 ### Phase 2 — x402 payment
 
 `signer.py`, `x402.py`.
@@ -120,9 +220,20 @@ it is the one that silently loses money in production.
 - Port `BuyerSigner`
 - `fetch(url, method, body)` — challenge, sign, replay, return body + receipt
 - Refuses non-`402` challenge shapes rather than guessing
+- Refuses a challenge whose `accepts[].asset` is not the profile's payment asset,
+  naming both, rather than opting into something at spend time
+- Refuses a challenge whose `payTo` is our own vault or session address
 
-**Done when:** `obol fetch https://<authen-testnet>/api/v1/notarize` pays and
-returns a signed attestation, from a session account, with the receipt printed.
+**The testnet target is Authen booted on loopback**, exactly as `pay_once.py`
+does it — there is no deployed Authen testnet host. Two conditions, both from
+`CLAUDE.md`: use a config whose `extra.tag` is **not** `x402-global-challenge`
+(`node.local.toml` already sets a local tag), and accept that the loopback URL is
+catalogued permanently against that merchant id. That is the price of a testnet
+run and it is why this must never be done with the mainnet config loaded.
+
+**Done when:** `obol fetch http://127.0.0.1:8402/api/v1/notarize` pays from a
+session account and returns a signed attestation with the receipt printed, and
+the attestation verifies offline against `/api/v1/identity`.
 
 ### Phase 3 — Caps and consent
 
@@ -131,6 +242,10 @@ returns a signed attestation, from a session account, with the receipt printed.
 - Per-call maximum, checked before signing
 - Daily total, persisted, resets on UTC day boundary
 - Optional payTo/host allowlist
+- The five `pay_mainnet.py` rails from §2, always on — they are not caps the user
+  can raise. Self-payment and non-https-on-mainnet are refusals, not warnings
+- Mainnet requires an explicit profile selection plus per-spend confirmation
+  until the MCP consent model replaces it in Phase 4
 - Session balance is the chain-enforced backstop and needs no code
 
 **Done when:** each cap refuses correctly and the refusal names which limit was
@@ -145,9 +260,28 @@ hit. Unit-testable without network.
 - Tool descriptions carry the honest caveats from `DESIGN.md` §7
 
 **Done when:** installed in a real MCP client, an agent completes a paid
-notarization against Authen testnet without the human touching a key.
+notarization against loopback Authen on testnet without the human touching a key.
 
-### Phase 5 — v1.1 funding paths
+### Phase 5 — The first mainnet payment
+
+The demo, and the point of the whole exercise: an agent buys something real, from
+a real merchant, with money it was given once and provisioned none of.
+
+- Switch the profile to mainnet; target `https://authen.hvym.link/api/v1/notarize`
+- Fund the vault with a few dollars of real USDC — vault bootstrap for real, and
+  the first honest test of how much friction §3.1 actually leaves
+- `obol` preflight must pass every rail before anything is signed
+- Open a session, pay $0.05, close the session, reconcile
+
+**Done when:** a settled mainnet txid, an attestation that verifies offline, and
+a vault balance that reconciles to the microunit.
+
+**Deadline interaction:** if this is not comfortably reachable by **2026-08-28**,
+run `D:/repos/Authen/tools/pay_mainnet.py --pay --confirm` to close the gate and
+let Obol take the second payment. The gate is Authen's, not Obol's, and Obol must
+never be the reason it slips.
+
+### Phase 6 — v1.1 funding paths
 
 MoonPay embed (`DESIGN.md` §5) and the staking-funded credit ledger (§5.1).
 Both are additive and neither blocks v1.
@@ -175,13 +309,23 @@ the returned attestation verified offline.
 1. **Async/sync mismatch (P0.1).** Highest-impact unknown. Probe first.
 2. **Session boundary.** No clean end signal means balances sit in session
    accounts longer than intended. Mitigated by the reaper, not solved by it.
-3. **Testnet USDC availability.** Faucets rate-limit. Fallback is a self-minted
-   6-decimal ASA, already proven in the Authen work.
-4. **MCP client variation.** Tool-approval behaviour differs between clients;
+3. **The September 1 gate.** Twenty days from writing. Mitigated structurally,
+   not by optimism: `pay_mainnet.py` already closes it, so Obol's schedule and
+   Authen's deadline are independent. Keep them that way — Phase 5 states the
+   fallback date explicitly.
+4. **Paying ourselves.** Obol's demo merchant is Authen, which we own. One
+   payment is the gate and is fine; a wallet that loops against its own endpoint
+   is wash traffic and a disqualification risk. `CLAUDE.md`'s house rule — never
+   generate volume for its own sake — is enforced in code by the payer ≠ payTo
+   rail, and in judgement by not pointing benchmarks at Authen.
+5. **MCP client variation.** Tool-approval behaviour differs between clients;
    the consent model in `DESIGN.md` §7 may need adjusting per client.
-5. **Onramp minimums (v1.1).** Several providers sit at $5–15 minimum, which is
+6. **Onramp minimums (v1.1).** Several providers sit at $5–15 minimum, which is
    large relative to a $5 session balance. Vault top-ups will be chunkier than
    session spends — design the funding UX around that, not against it.
+
+**Retired:** *testnet USDC availability.* The stand-in ASA `769120200` exists and
+is funded on both Authen testnet accounts; no faucet is on the critical path.
 
 ---
 
@@ -192,3 +336,5 @@ the returned attestation verified offline.
 - No key ever leaves the machine.
 - An unclean exit loses nothing.
 - The wallet works against any x402 resource, not only Authen.
+- **At least one real mainnet settlement was made by Obol itself**, reconciled to
+  the microunit, with the attestation verified offline.

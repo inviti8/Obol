@@ -3,7 +3,9 @@
 Read [`CLAUDE.md`](./CLAUDE.md) first for orientation and the x402 facts that
 are expensive to rediscover.
 
-**Written:** 2026-08-12. **Status:** design, nothing built.
+**Written:** 2026-08-12. **Status:** design, nothing built. Amended the same day
+with the vault bootstrap (§3.1), the payment-asset correction (§3) and the
+refusals in §7, all of which came out of reading the live rails.
 
 ---
 
@@ -24,7 +26,7 @@ session ends the account is closed and its remaining value swept back.
     · NEVER signs an x402 payment
     · the trust boundary
          │
-         │  atomic group: fund ALGO → opt in USDC → transfer balance
+         │  atomic group: fund ALGO → opt in asset → transfer balance
          ▼
   Session  (ephemeral, one per agent session)
     · fresh keypair, memory only; address persisted for reaping
@@ -52,8 +54,22 @@ them, so setup is **one atomic group, one round**:
 | # | Transaction | Sender | Purpose |
 |---|---|---|---|
 | 1 | `PaymentTxn` → session | vault | 0.21 ALGO: 0.1 account min + 0.1 ASA slot + fee headroom |
-| 2 | `AssetTransferTxn` amt=0 | session | opt into USDC (ASA `31566704`) |
+| 2 | `AssetTransferTxn` amt=0 | session | opt into the profile's **payment asset** |
 | 3 | `AssetTransferTxn` → session | vault | the session balance |
+
+Transaction 2 is signed by an account that transaction 1 has only just created.
+That is fine — Algorand applies state changes between grouped transactions — and
+it is the reason setup is one round rather than two.
+
+**The payment asset is configuration, never a constant.** Writing `31566704` into
+the setup group looks harmless and is not: the testnet rail we develop against
+uses a self-minted stand-in ASA (`769120200`), so a hardcoded mainnet USDC id
+means opting into the wrong asset and failing every payment. Each network profile
+carries its own `payment_asa`, and the challenge's `accepts[].asset` is checked
+against it before signing. A challenge naming a different asset is **refused with
+both ids named**, not accommodated by opting in at spend time — an opt-in mid-flow
+costs a round, needs another 0.1 ALGO of minimum balance, and hands an attacker a
+way to make the session hold something it cannot sell.
 
 Teardown is a second group. **Order matters** — an account holding an ASA cannot
 be closed:
@@ -68,6 +84,40 @@ locked during the session is 0.21 ALGO (~1.7¢), fully reclaimed on close.
 
 **Latency:** two rounds, roughly 3 s each. Noticeable at session start, so keep a
 session alive across calls rather than opening one per call.
+
+### 3.1 Bootstrapping the vault — the step the pitch forgets
+
+Everything above assumes a vault that already holds ALGO and is already opted
+into the payment asset. A newly generated vault holds neither, and the ordering
+is forced:
+
+| # | Step | Who | Why it cannot move |
+|---|---|---|---|
+| 1 | Send ≥ 0.2 ALGO to the vault | human | An account with no balance cannot pay the fee for its own opt-in, and 0.1 of it is locked as the ASA slot minimum |
+| 2 | Vault opts into the payment asset | Obol | Signed by the vault key. The **one** transaction the vault signs that is not a session funding group |
+| 3 | Send USDC to the vault | human | Before step 2 this is **rejected outright** — there is no pending state, the transfer simply fails |
+
+Three human steps, in order, at exactly the point where the README promises
+nothing to provision. Two honest consequences:
+
+**Say it, do not hide it.** `wallet_funding_info` reports which of the three
+steps the vault is on and what to do next — every time, not only on error. The
+failure this prevents is a user sending USDC to a vault that has not opted in,
+watching it bounce, and having no idea why.
+
+**It sharpens the case for the onramp (§5), it does not weaken it.** An onramp
+delivers USDC and not ALGO, so a card purchase alone still leaves a vault that
+cannot receive it. Whatever ships for §5 must solve step 1 too — a small ALGO
+purchase, or a sponsored funding transaction from a HEAVYMETA account. That
+second option is worth considering carefully: at ~1.7¢ it is cheap enough to give
+away, and it collapses three steps into one. It is also the only place in the
+design where we would touch a user's account setup, so it needs to be a gift with
+no strings, not custody.
+
+**The vault must stay opted in for teardown to work.** Session close sends
+`close_assets_to=vault`; if the vault ever closed out of the asset, every session
+would be unable to return its balance. Nothing in v1 closes the vault's holding —
+noted here so nothing later does it casually.
 
 ### Closing an account: Algorand vs Stellar
 
@@ -437,8 +487,9 @@ wallet_status()
     balance, spend today against the daily cap.
 
 wallet_funding_info()
-    Address and instructions, for the human. Includes the ASA opt-in note,
-    since an un-opted-in account silently cannot receive USDC.
+    Address and instructions, for the human. Reports which of the three
+    bootstrap steps in §3.1 the vault is on — an un-opted-in account cannot
+    receive USDC at all, and the transfer fails rather than pending.
 
 x402_discover(query=None, max_price_usdc=None)
     Search the Bazaar. Honest caveat in the tool description: discovery does
@@ -448,6 +499,18 @@ x402_discover(query=None, max_price_usdc=None)
 
 No `authen_notarize` tool. Authen is reached through `x402_fetch` like anything
 else — the moment Obol has first-class Authen verbs it stops being a wallet.
+
+### Refusals that are not caps
+
+Caps are the user's to set. These are not — they hold whatever the budget says,
+and none of them has a config key:
+
+| Refuse when | Because |
+|---|---|
+| `payTo` is our own vault or session address | Paying yourself is not a payment. It is also the first thing an anti-wash review looks for, and `CLAUDE.md`'s house rule in executable form. |
+| The resource is not `https://` on mainnet | The facilitator catalogues the URL permanently on `/verify`. |
+| `accepts[].asset` is not the profile's payment asset | §3. Refuse naming both ids rather than opting into something at spend time. |
+| The challenge is not a well-formed `402` | Guessing at a malformed challenge is how money goes to the wrong place. |
 
 ### Consent model
 
@@ -465,14 +528,18 @@ enabled.
 
 **Ships:**
 
-- Algorand mainnet + testnet
+- Algorand mainnet + testnet. **Development runs on testnet; mainnet is for the
+  demo and for real payments.** Mainnet is guarded, never disabled — the first
+  real settlement is meant to be Obol's own
 - Python (rationale below)
-- Vault key in the OS keychain via `keyring`
+- Vault key in a 0600 file in the data dir, written atomically. **`keyring` is
+  the finished-product backend, not a v1 requirement** — it goes behind the same
+  interface later, and nothing above the key module should know which is in use
 - Ephemeral session accounts with atomic setup/teardown, plus the reaper
 - `x402_fetch`, `wallet_status`, `wallet_funding_info`
-- Spend caps enforced in process
-- Any vault is funded by sending USDC to its address (crypto-native path, zero
-  KYC surface)
+- Spend caps enforced in process, plus the refusals in §7 that are not caps
+- Any vault is funded by sending ALGO then USDC to its address, in that order
+  (§3.1) — the crypto-native path, zero KYC surface
 
 **v1.1 — both funding paths. These are the product thesis, not extras:**
 
@@ -520,19 +587,31 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
 4. **Confirm the referrer position with counsel** before launch, not before
    building (§8). MoonPay is chosen; revisit only if its Algorand coverage or
    entry-tier limits change.
-5. **Multiple concurrent sessions per vault** — needed? Adds nonce/ordering
-   concerns on vault-signed funding transactions.
+5. ~~**Multiple concurrent sessions per vault**~~ — **closed 2026-08-12.** One
+   session at a time, serialised. No known requirement for more, and it removes
+   the nonce/ordering problem on vault-signed funding groups rather than solving
+   it. Reopen only when a real client needs it.
 
 ## 10. First tasks, in order
 
-1. LogicSig facilitator probe on testnet (§5). Cheap, and the answer is permanent.
-   Do not block the build on it — §5 recommends deferring the policy work.
-2. Port `BuyerSigner` and the 402 flow from Authen; prove `x402_fetch` against
-   Authen's testnet endpoint.
-3. Session lifecycle: atomic setup, atomic teardown, reaper. Test the crash path
-   explicitly — kill the process mid-session and confirm the next start recovers
-   the balance.
-4. Wrap in an MCP server; verify against a real MCP client.
-5. Embedded onramp (§5) — pick a provider, prove a card purchase lands USDC in a
-   vault address. This is the half of the thesis that is not about signing.
-6. Spend caps and the consent model.
+Build order and done-conditions live in
+[`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md); this is the same sequence in
+one screen.
+
+1. **Probe the async question first.** Can `x402ClientSync` be driven from inside
+   a running asyncio loop, or must it be offloaded to a thread? It decides the
+   shape of every call site, and it is an hour.
+2. Wallet core: vault key, §3.1 bootstrap, session lifecycle, reaper. Test the
+   crash path explicitly — kill the process mid-session and confirm the next
+   start recovers the balance.
+3. Port `BuyerSigner` and the 402 flow from Authen; prove `x402_fetch` against
+   Authen booted on loopback, on testnet.
+4. Spend caps, the §7 refusals, and the consent model.
+5. Wrap in an MCP server; verify against a real MCP client.
+6. **The first mainnet payment, made by Obol**, against `authen.hvym.link`.
+7. LogicSig facilitator probe on testnet (§6). Cheap, permanent, and blocks
+   nothing — §6 recommends deferring the policy build regardless. Do it whenever
+   there is an idle afternoon.
+8. Embedded onramp (§5) — pick a provider, prove a card purchase lands USDC in a
+   vault address. This is the half of the thesis that is not about signing, and
+   §3.1 means it must deliver ALGO as well.
