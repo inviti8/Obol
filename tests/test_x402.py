@@ -163,24 +163,24 @@ def test_allows_loopback_on_testnet(tmp_path):
     guard(requirement, conf, "http://127.0.0.1:8402/api", {OURS})
 
 
-def test_refuses_above_the_explicit_max_price(tmp_path):
+def test_guard_does_not_judge_price(tmp_path):
+    """Price is a cap, and caps live in caps.py.
+
+    Asserted rather than assumed, because the split is the whole reason a caller
+    can tell "raise your limit" apart from "you tried to pay yourself". If price
+    checks crept back in here they would raise PaymentRefused without a `limit`,
+    and the caller would lose that distinction silently.
+    """
     conf = cfg(tmp_path)
-    requirement = choose_requirement(challenge(accept(amount="50000")), conf)
-    with pytest.raises(PaymentRefused, match="max_price"):
-        guard(requirement, conf, "http://x/y", {OURS}, max_price_micro=10_000)
+    absurd = choose_requirement(challenge(accept(amount="99000000")), conf)
+    guard(absurd, conf, "http://x/y", {OURS})  # must not raise
 
 
-def test_refuses_above_the_configured_per_call_cap(tmp_path):
+def test_refuses_a_negative_amount(tmp_path):
     conf = cfg(tmp_path)
-    requirement = choose_requirement(challenge(accept(amount="900000")), conf)
-    with pytest.raises(PaymentRefused, match="per-call cap"):
+    requirement = choose_requirement(challenge(accept(amount="-1")), conf)
+    with pytest.raises(PaymentRefused, match="valid amount"):
         guard(requirement, conf, "http://x/y", {OURS})
-
-
-def test_allows_a_price_inside_both_limits(tmp_path):
-    conf = cfg(tmp_path)
-    requirement = choose_requirement(challenge(accept(amount="50000")), conf)
-    guard(requirement, conf, "http://x/y", {OURS}, max_price_micro=100_000)
 
 
 # ---- validate-then-sign --------------------------------------------------

@@ -35,7 +35,10 @@ from typing import Any
 
 import httpx
 
+from . import caps
+from .caps import SpendContext
 from .config import Config
+from .errors import CapExceeded, PaymentRefused, PaymentRejected
 from .keys import Key
 from .signer import SessionSigner
 
@@ -45,16 +48,17 @@ RECEIPT_HEADERS = ("PAYMENT-RESPONSE", "X-PAYMENT-RESPONSE")
 SCHEME_EXACT = "exact"
 
 
-class PaymentRefused(Exception):
-    """We declined to pay, before anything was signed.
-
-    Every refusal names what it objected to. A wallet that says only "refused"
-    forces the user to guess, and the guesses are expensive.
-    """
-
-
-class PaymentRejected(Exception):
-    """We paid, or tried to, and the server did not serve the resource."""
+# Re-exported so callers can import the whole flow's vocabulary from one place.
+# CapExceeded is a PaymentRefused, so `except PaymentRefused` still catches
+# everything that declined before signing.
+__all__ = [
+    "CapExceeded",
+    "PaymentRefused",
+    "PaymentRejected",
+    "PaymentResult",
+    "Requirement",
+    "fetch",
+]
 
 
 @dataclass(frozen=True)
@@ -168,12 +172,13 @@ def guard(
     cfg: Config,
     url: str,
     our_addresses: set[str],
-    max_price_micro: int | None = None,
 ) -> None:
-    """The refusals that are not caps. None of these has a config key.
+    """The refusals that are NOT caps. None of these has a config key.
 
-    Caps are the user's to set; these hold whatever the budget says. See
-    DESIGN.md section 7.
+    Caps are the user's to set and live in `caps.py`; these hold whatever the
+    budget says. See DESIGN.md section 7. The split is visible to the caller,
+    because "raise your daily limit" and "you tried to pay yourself" call for
+    completely different responses.
     """
     if requirement.pay_to in our_addresses:
         raise PaymentRefused(
@@ -192,20 +197,6 @@ def guard(
 
     if requirement.amount_micro < 0:
         raise PaymentRefused("Challenge does not state a valid amount.")
-
-    # The explicit per-call ceiling from the caller, and the configured one. The
-    # rest of the spend controls - daily totals, allowlists, the consent model -
-    # land in caps.py in Phase 3.
-    if max_price_micro is not None and requirement.amount_micro > max_price_micro:
-        raise PaymentRefused(
-            f"Price {cfg.network.fmt(requirement.amount_micro)} exceeds the "
-            f"max_price of {cfg.network.fmt(max_price_micro)} for this call."
-        )
-    if requirement.amount_micro > cfg.caps.per_call_micro:
-        raise PaymentRefused(
-            f"Price {cfg.network.fmt(requirement.amount_micro)} exceeds the "
-            f"per-call cap of {cfg.network.fmt(cfg.caps.per_call_micro)}."
-        )
 
 
 def _narrow(challenge: dict[str, Any], requirement: Requirement) -> dict[str, Any]:
@@ -260,12 +251,17 @@ async def fetch(
     headers: dict[str, str] | None = None,
     max_price_micro: int | None = None,
     our_addresses: set[str] | None = None,
+    spend: SpendContext | None = None,
     timeout: float = 90.0,
 ) -> PaymentResult:
     """Fetch a URL, paying if it challenges.
 
     An unpaid 200 is a perfectly good outcome and costs nothing - not every URL
     behind this call is paid, and we should not insist on spending.
+
+    `spend` carries what the caller knows about running totals. Omitting it does
+    not disable the caps: per-call limits and the allowlist still apply, and only
+    the daily and session-balance checks go quiet for want of numbers.
     """
     method = method.upper()
     our = set(our_addresses or ()) | {session.address}
@@ -283,7 +279,18 @@ async def fetch(
 
         challenge = parse_challenge(first)
         requirement = choose_requirement(challenge, cfg)
-        guard(requirement, cfg, url, our, max_price_micro)
+        # Refusals first, then caps: a self-payment is wrong regardless of budget,
+        # and reporting it as a cap would invite someone to raise a limit to
+        # "fix" it.
+        guard(requirement, cfg, url, our)
+        caps.check(
+            cfg,
+            amount_micro=requirement.amount_micro,
+            pay_to=requirement.pay_to,
+            url=url,
+            spend=spend,
+            max_price_micro=max_price_micro,
+        )
 
         # The one blocking call in the flow, quarantined. See P0.1.
         payment_header = await asyncio.to_thread(

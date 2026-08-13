@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 LEDGER_VERSION = 1
@@ -148,7 +148,14 @@ class Ledger:
     # ---- spend counters --------------------------------------------------
 
     def today_key(self) -> str:
-        return date.today().isoformat()
+        """The UTC day, deliberately - never `date.today()`.
+
+        Local time makes the daily cap reset at a different instant for every
+        user, and shifts it twice a year under DST. Worse, it is invisible: the
+        counter simply rolls over an hour early one morning. Timestamps elsewhere
+        in this file are already UTC; this must match them.
+        """
+        return datetime.now(timezone.utc).date().isoformat()
 
     def spent_today(self) -> int:
         return self.daily_spend.get(self.today_key(), 0)

@@ -125,10 +125,20 @@ def cmd_fetch(cfg: Config, args) -> int:
     """Fetch a URL, paying from the open session if it challenges."""
     import asyncio
 
-    from .x402 import PaymentRefused, PaymentRejected, fetch
+    from .caps import SpendContext
+    from .errors import CapExceeded, PaymentRefused, PaymentRejected
+    from .x402 import fetch
 
     session, record, ledger = live_session(cfg)
     vault, _ = open_vault(cfg)
+
+    # What the ledger knows, handed to the caps. Session remaining is tracked
+    # against what we have spent from it, not read from chain - the chain is the
+    # real enforcement and this only makes the refusal legible.
+    spend = SpendContext(
+        spent_today_micro=ledger.spent_today(),
+        session_remaining_micro=max(0, record.balance_micro - record.spent_micro),
+    )
 
     body: bytes | None = None
     if args.body_file:
@@ -150,8 +160,13 @@ def cmd_fetch(cfg: Config, args) -> int:
                 body=body,
                 max_price_micro=max_price,
                 our_addresses={vault.address},
+                spend=spend,
             )
         )
+    except CapExceeded as exc:
+        # Named separately from a plain refusal: this one the user can raise.
+        print(f"CAP: {exc.limit}\n{exc}", file=sys.stderr)
+        return 4
     except PaymentRefused as exc:
         print(f"REFUSED\n{exc}", file=sys.stderr)
         return 2

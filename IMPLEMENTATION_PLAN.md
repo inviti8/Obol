@@ -317,7 +317,33 @@ run and it is why this must never be done with the mainnet config loaded.
 session account and returns a signed attestation with the receipt printed, and
 the attestation verifies offline against `/api/v1/identity`.
 
-### Phase 3 — Caps and consent
+### Phase 3 — Caps — **DONE 2026-08-12** (consent deferred to Phase 4)
+
+`caps.py` and `errors.py`. Every limit proved live against the loopback node, and
+each refusal names which one was hit.
+
+**A real bug, found by reading the ledger for this work.** `today_key()` used
+`date.today()` — **local** time, not the UTC boundary this plan specifies. The
+daily cap would have reset at local midnight, silently, and shifted twice a year
+under DST. On the machine this was built on, local was 2026-08-12 while UTC was
+already 2026-08-13. Fixed, and the counter now agrees with every other timestamp
+in the ledger, which was already UTC.
+
+**The split that matters: caps are not refusals.** `CapExceeded` is a subclass of
+`PaymentRefused` carrying a `limit`, because a caller needs to tell "raise your
+daily limit" apart from "you tried to pay yourself". One is a setting; the other
+never will be. A test asserts `guard()` does not judge price, so the checks
+cannot creep back and lose that distinction. Exit codes follow: `2` refused,
+`4` capped.
+
+`PaymentRejected` is deliberately NOT a `PaymentRefused` — we signed and sent, so
+the money may have moved, and a blind retry could pay twice for nothing.
+
+**Consent is Phase 4, on purpose.** The model in `DESIGN.md` §7 is a property of
+the MCP surface — approve a budget once, spend inside it silently — and settling
+it without a real client in the loop would be guesswork.
+
+### Phase 3 — Caps and consent (original plan)
 
 `caps.py`.
 
