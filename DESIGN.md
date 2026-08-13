@@ -272,33 +272,57 @@ receive staking rewards directly from the Algorand network into their wallet,
 without any intermediary."* We pay the Validator a setup fee plus an annual
 operational fee; Valar takes a commission on that fee, not on rewards.
 
-**It does not remove the 30k threshold.** Valar is explicit: the Period 10
-governance vote set reward eligibility at 30,000 ALGO, and *"accounts with less
-than 30k ALGO are not eligible for staking rewards"* — they can participate in
-consensus but earn nothing. Sub-threshold holders need stake pooling or liquid
-staking, which Valar deliberately positions against on decentralisation grounds.
-With ~30k on hand this is moot for us; do not plan on Valar lowering the floor
-for a smaller position.
+**Two roles, and they earn differently.** This is the part an earlier draft
+missed entirely by only looking at the Delegator side.
 
-**Sizing, with the fee subtracted.**
+| Role | What you supply | What you earn | ALGO minimum |
+|---|---|---|---|
+| **Delegator** | 30k+ ALGO, stays in your wallet | Algorand staking rewards, paid directly by the network | **30,000** for reward eligibility |
+| **Validator** | a participation node | **fees paid by Delegators**, setup + annual operational | **none** |
+
+Valar's own summary: it *"enables node runners to be compensated for their
+services directly by their customers"*, and *"ALGO owners in possession of an
+Algorand participation node are able to stake on their own behalf, as well as on
+behalf of other users."*
+
+So node running is a **services business with no stake requirement**. That is a
+genuine second income line, and it is not what "staking rewards on tiny amounts"
+means — which is the distinction worth being precise about.
+
+**The 30k threshold is a protocol rule and Valar does not change it.** The Period
+10 governance vote set reward eligibility at 30,000 ALGO. Valar states plainly
+that *"accounts with less than 30k ALGO are not eligible for staking rewards,
+they can participate in consensus"*, and that sub-threshold holders need stake
+pooling or liquid staking instead. What Valar offers a small holder is
+*participation*, not *rewards*. A Delegator below 30k has no reason to pay a
+node runner, which is also why a Validator's customers are all 30k+ holders.
+
+**The best structure captures both sides: self-run the node.**
 
 | | |
 |---|---:|
-| Principal (never consumed) | ~30,000 ALGO / ~$2,372 |
-| Gross yield at ~5% | ~$118/yr |
-| Less Validator operational fee | Figure 3.2 spans $0-200/yr for 30k-100k stake |
-| **Net, realistic** | **~$40-80/yr** |
-| Notarizations funded at $0.05 | ~800-1,600/yr |
-| Or: developers given 10 free calls | ~80-160/yr |
+| Our 30k staked on our own node — no Validator fee paid | ~$118/yr |
+| 2-3 other Delegators on the same node (3-4 accounts fit) | ~$160-240/yr |
+| Gross | **~$280-360/yr** |
+| Less VPS for the participation node | ~$120-240/yr |
+| Less Valar's commission on fees earned | φ% of the fee line |
+| **Net, realistic** | **~$50-240/yr** |
 
-Running our own node instead removes the Validator fee entirely and returns net
-to ~$118/yr, at the cost of operating a participation node. **Do not co-locate it
-with the Authen endpoint** — that box has to stay up through 2026-10-08 and a
-consensus node is not a workload to bolt onto it.
+Setup fee is nominal — Valar expects Validators to charge *"about 1 USD"*, since
+it exists mainly as spam prevention for a computationally expensive key
+generation. The operational fee is the real line, paid upfront for the contract
+duration and released gradually.
 
-That is a genuine free-trial budget and a useless per-agent income. Both are
-true and the distinction is the whole point: it will onboard a hundred-odd
-developers a year and will never fund anyone's real usage.
+At $0.05 a notarization that is **1,000-4,800 funded calls a year**. A real
+trial budget. Still never per-agent income.
+
+**The honest cost.** Running a participation node for paying customers is an
+operations commitment with uptime obligations and customer support — a different
+business from selling notarization. Delegating our own 30k via Valar takes
+minutes and yields the low end; running nodes for others yields the high end and
+is a company. **Recommendation: delegate now, decide on node running separately
+and later.** It must not be co-located with the Authen endpoint, which has to
+hold uptime through 2026-10-08.
 
 **Structure: one position, not one per MCP.** The instinct to open a position per
 MCP instance does not survive Valar's own warning that *"the staked funds are not
