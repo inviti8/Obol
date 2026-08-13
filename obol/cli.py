@@ -250,6 +250,44 @@ def cmd_vault_qr(cfg: Config, args) -> int:
             )
             print(f"  written to {path}")
 
+    if args.open_page:
+        from .view import ViewCard, open_in_browser, render_page, write_page
+
+        st = vault_status(cfg)
+        cards = [
+            ViewCard(
+                label=t.theme.label,
+                uri=t.uri,
+                png=qr_styled_png(
+                    t.uri,
+                    logo=default_logo(),
+                    dark=t.theme.modules,
+                    light=t.theme.background,
+                    caption=t.theme.label,
+                ),
+                why=t.why,
+                background=t.theme.background,
+                suggested=t.suggested,
+            )
+            for t in targets
+        ]
+        page = write_page(
+            render_page(
+                cards,
+                network=cfg.network.name,
+                address=vault.address,
+                balances={
+                    "ALGO": f"{st.algo_micro / 1e6:.6f}",
+                    cfg.network.asset_label: cfg.network.fmt(st.asset_micro),
+                },
+            ),
+            network=cfg.network.name,
+            tag=targets[0].theme.key if len(targets) == 1 else "all",
+        )
+        print()
+        print(f"  page      {page}")
+        print(f"  opened    {open_in_browser(page)}")
+
     print()
     print("No amount is encoded in either code - type it into your wallet, where")
     print("you can see it before confirming.")
@@ -286,6 +324,8 @@ def build_parser() -> argparse.ArgumentParser:
     v_qr.add_argument("--algo-only", action="store_true", help="just the ALGO code")
     v_qr.add_argument("--asset-only", action="store_true", help="just the asset code")
     v_qr.add_argument("--write", default=None, metavar="DIR", help="also save PNGs")
+    v_qr.add_argument("--open", action="store_true", dest="open_page",
+                      help="render a page and open it in a browser")
     v_qr.set_defaults(fn=cmd_vault_qr)
 
     session = sub.add_parser("session", help="session lifecycle")

@@ -43,6 +43,7 @@ from ..session import (
     reap,
     vault_status,
 )
+from ..view import ViewCard, open_in_browser, render_page, write_page
 from ..x402 import PaymentResult, fetch
 
 
@@ -300,6 +301,68 @@ class Wallet:
                 written.append(str(path))
             info["qr_written"] = written
         return info
+
+    async def funding_view(self, asset: str | None = None) -> dict[str, Any]:
+        """Render the funding codes as a page and open it in a browser.
+
+        The MCP image block is correct and some clients render it; a terminal
+        client does not, which leaves the one person who needs to point a phone
+        at the code unable to see it. This is the fallback that always works.
+        """
+        from ..funding import default_logo, funding_targets, qr_styled_png
+
+        st = await asyncio.to_thread(vault_status, self.cfg)
+        label = self.cfg.network.asset_label
+        targets = funding_targets(
+            st.address,
+            self.cfg.network.payment_asa,
+            network=self.cfg.network.name,
+            algo_needed_micro=VAULT_MIN_ALGO_MICRO,
+            asset_label=label,
+        )
+        if asset is not None:
+            targets = [t for t in targets if _matches_asset(t, asset, label)]
+            if not targets:
+                raise WalletError(
+                    f"Unknown asset {asset!r}. This wallet holds ALGO and {label}."
+                )
+
+        cards = [
+            ViewCard(
+                label=t.theme.label,
+                uri=t.uri,
+                png=qr_styled_png(
+                    t.uri,
+                    logo=default_logo(),
+                    dark=t.theme.modules,
+                    light=t.theme.background,
+                    caption=t.theme.label,
+                ),
+                why=t.why,
+                background=t.theme.background,
+                suggested=t.suggested,
+            )
+            for t in targets
+        ]
+        page = render_page(
+            cards,
+            network=self.cfg.network.name,
+            address=st.address,
+            balances={
+                "ALGO": f"{st.algo_micro / 1e6:.6f}",
+                label: self.cfg.network.fmt(st.asset_micro),
+            },
+        )
+        tag = targets[0].theme.key if asset is not None else "all"
+        path = await asyncio.to_thread(
+            write_page, page, network=self.cfg.network.name, tag=tag
+        )
+        opened = await asyncio.to_thread(open_in_browser, path)
+        return {
+            "page": str(path),
+            "opened_in_browser": opened,
+            "showing": [c.label for c in cards],
+        }
 
     async def funding_qr(self, asset: str) -> tuple[str, str, bytes]:
         """One asset's funding code as PNG bytes. Returns (label, uri, png)."""

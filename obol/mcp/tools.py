@@ -95,6 +95,12 @@ whole picture as text.
 The usual flow: `wallet_status` answers "how much do I have", then
 `wallet_funding_info(asset="USDC")` answers "I want to top up USDC".
 
+SET `open_in_browser` WHENEVER A HUMAN WANTS TO SCAN THE CODE. The image block
+this returns renders in some MCP clients and not in a terminal, so on its own it
+can reach the model and never reach the person holding the phone. With the flag,
+Obol writes a self-contained page and opens it in the default browser - no server
+and no network needed.
+
 `qr_dir` optionally writes the codes as PNG files into that directory, under the
 same configured file root as body_file/output_file. `obol vault qr` prints them
 straight into a terminal."""
@@ -182,12 +188,19 @@ def register(server: Any, wallet: Wallet) -> None:
         name="wallet_funding_info", description=WALLET_FUNDING_INFO_DESCRIPTION
     )
     async def wallet_funding_info(
-        asset: str | None = None, qr_dir: str | None = None
+        asset: str | None = None,
+        qr_dir: str | None = None,
+        open_in_browser: bool = False,
     ) -> Any:
         try:
             info = await wallet.funding_info(asset=asset, qr_dir=qr_dir)
         except WalletError as exc:
             return {"error": "wallet_not_ready", "message": str(exc)}
+        if open_in_browser:
+            try:
+                info["view"] = await wallet.funding_view(asset)
+            except Exception as exc:  # showing is a convenience, never the payload
+                info["view"] = {"error": str(exc)[:200], "opened_in_browser": False}
         if asset is None:
             return info
         # A named asset is a top-up request, so hand back the code itself rather
