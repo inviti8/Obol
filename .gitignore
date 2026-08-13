@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# uv
+.venv/
+
+# Local state. NOTHING under here is ever committed: it holds the vault seed, the
+# session ledger and live account addresses. See DESIGN.md §2 — the vault key is
+# the trust boundary and never leaves the machine.
+.obol/
+*.mnemonic
+*_seed.bin
+probes/out/

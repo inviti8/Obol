@@ -18,18 +18,50 @@ rediscover.
 Two unknowns change the shape of the code, not just its details. Resolve both
 first — each is hours, not days, and discovering either late means rework.
 
-### P0.1 — Can the x402 client run inside an async MCP server?
+**P0.1 is answered** (2026-08-12): sync client in a thread. P0.2 remains open and
+blocks nothing.
 
-**Why it gates everything.** The Authen work drove `x402ClientSync` end to end
-twice. MCP servers are async. If the sync client cannot be called from an event
-loop, every call site changes.
+### P0.1 — Can the x402 client run inside an async MCP server? — **ANSWERED**
 
-`x402.client` exports both `x402Client` and `x402ClientSync`. Check whether
-`register_exact_avm_client` works against the async variant, or whether the sync
-client must be offloaded to a thread.
+**Answer: use `x402ClientSync` inside `asyncio.to_thread`.** Not the async
+client, even though the async client works.
 
-**Deliverable:** one script that completes a testnet payment from inside a
-running asyncio loop. Record which variant worked in this file.
+Probe: `probes/p0_1_async_client.py`, run 2026-08-12 against a loopback Authen
+node on testnet. Both variants completed real settled payments; the difference is
+not whether they work but what they do to the event loop.
+
+| Variant | Settled | Payment took | **Worst event-loop stall** |
+|---|---|---:|---:|
+| A — native `x402Client`, awaited on the loop | yes | 7.55 s | **968 ms** |
+| B — `x402ClientSync` in `asyncio.to_thread` | yes | 2.43 s | **22 ms** |
+
+**Why the async client is the wrong answer despite working.** Reading
+`x402-avm` 2.0.2: both clients share one generator,
+`x402ClientBase._create_payment_payload_v2_core`. The async client awaits *hooks*
+only — at the scheme it makes a plain synchronous call. And
+`ExactAvmClientScheme.create_payment_payload` is not a coroutine: it calls
+`algod.suggested_params()`, a blocking HTTP round trip, inline. So `await`ing the
+async client parks the whole loop for the duration of an algod call. In an MCP
+server that means the server stops answering *everything*, not just this request,
+for about a second per payment. The heartbeat measured exactly that.
+
+Variant B is also 3× faster wall-clock here, which is incidental — testnet
+variance — and not the reason to choose it.
+
+**Consequences for the build, all of them narrowing:**
+
+- `obol/x402.py` exposes `async def fetch(...)` and does the payload build in
+  `asyncio.to_thread`. The blocking work is quarantined in one function.
+- **`BuyerSigner` stays synchronous.** The scheme calls `sign_transactions`
+  directly, never through an await, so the port from `pay_once.py` needs no async
+  variant. The Authen code carries over unchanged.
+- The proven-twice sync path stays the code that touches money. That was the
+  preferred outcome anyway; it is now the measured one.
+
+**Two facts re-confirmed on the wire** while the probe ran, both already in
+`CLAUDE.md` and both worth having seen again: the buyer's ALGO was unchanged
+across two settlements (`1.998` before and after — the facilitator sponsors the
+fee via `feePayer`), and only the asset balance moved, 96.8 → 96.7.
 
 ### P0.2 — Does the facilitator accept a LogicSig envelope?
 
@@ -306,7 +338,10 @@ the returned attestation verified offline.
 
 ## 5. Risks, in order
 
-1. **Async/sync mismatch (P0.1).** Highest-impact unknown. Probe first.
+1. **Blocking the MCP event loop.** No longer an unknown (P0.1) but still a live
+   risk: the payload build blocks for ~1 s and *anything* else that reaches for
+   algod synchronously will do the same. Every blocking call goes through
+   `asyncio.to_thread`, and nothing else in the process may call algod directly.
 2. **Session boundary.** No clean end signal means balances sit in session
    accounts longer than intended. Mitigated by the reaper, not solved by it.
 3. **The September 1 gate.** Twenty days from writing. Mitigated structurally,
