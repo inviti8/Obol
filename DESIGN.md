@@ -66,6 +66,9 @@ be closed:
 **Cost per session:** 5 transactions × 0.001 ALGO ≈ **$0.0004**. Minimum balance
 locked during the session is 0.21 ALGO (~1.7¢), fully reclaimed on close.
 
+**Latency:** two rounds, roughly 3 s each. Noticeable at session start, so keep a
+session alive across calls rather than opening one per call.
+
 ### Closing an account: Algorand vs Stellar
 
 Functionally the same as Stellar's `ACCOUNT_MERGE`, mechanically different in a
@@ -91,9 +94,6 @@ three such escape hatches on the transaction types a session key signs:
 An x402 payment is an `AssetTransferTxn`, so `close_assets_to` and `rekey_to` are
 both reachable by anything holding the session key. This is why a spend policy
 that only checks amount and receiver is worthless — see §5.
-
-**Latency:** two rounds, roughly 3 s each. Noticeable at session start, so keep a
-session alive across calls rather than per-call.
 
 ### The reaper is not optional
 
