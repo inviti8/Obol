@@ -19,5 +19,7 @@ invisibly so the agent just spends.
 - **[CLAUDE.md](./CLAUDE.md)** — orientation, and the x402 facts that cost real
   debugging time to learn.
 - **[DESIGN.md](./DESIGN.md)** — architecture, security model, v1 scope.
+- **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** — build order, what to
+  port from Authen, and the two probes to run before writing module code.
 
 Status: **design only, nothing built.**
