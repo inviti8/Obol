@@ -27,6 +27,7 @@ obol-mcp = "obol.mcp.server:main"
 
 [dependency-groups]
 dev = [
+    "anyio>=4.14.2",
     "pytest>=8",
 ]
 

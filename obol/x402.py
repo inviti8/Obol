@@ -30,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -46,6 +47,10 @@ CHALLENGE_HEADER = "PAYMENT-REQUIRED"
 PAYMENT_HEADER = "PAYMENT-SIGNATURE"
 RECEIPT_HEADERS = ("PAYMENT-RESPONSE", "X-PAYMENT-RESPONSE")
 SCHEME_EXACT = "exact"
+
+# An async callable that opens (and funds) a session and returns its key. Resolved
+# only when a payment is certain - see `fetch`.
+SessionProvider = Callable[[], Awaitable[Key]]
 
 
 # Re-exported so callers can import the whole flow's vocabulary from one place.
@@ -180,12 +185,7 @@ def guard(
     because "raise your daily limit" and "you tried to pay yourself" call for
     completely different responses.
     """
-    if requirement.pay_to in our_addresses:
-        raise PaymentRefused(
-            f"payTo {requirement.pay_to} is our own address. Paying yourself is "
-            "not a payment - it is a round trip on chain, and the first thing an "
-            "anti-wash review looks for."
-        )
+    refuse_self_pay(requirement.pay_to, our_addresses)
 
     if cfg.network.is_mainnet and not url.lower().startswith("https://"):
         raise PaymentRefused(
@@ -197,6 +197,22 @@ def guard(
 
     if requirement.amount_micro < 0:
         raise PaymentRefused("Challenge does not state a valid amount.")
+
+
+def refuse_self_pay(pay_to: str, our_addresses: set[str]) -> None:
+    """Refuse to pay an address we control.
+
+    Called twice per payment, and both are needed. The first runs before a session
+    exists, against the addresses we already know (the vault). The second runs
+    after the session is opened, because its address is only knowable then - and
+    signing is the last moment that check is still free.
+    """
+    if pay_to in our_addresses:
+        raise PaymentRefused(
+            f"payTo {pay_to} is our own address. Paying yourself is not a payment "
+            "- it is a round trip on chain, and the first thing an anti-wash "
+            "review looks for."
+        )
 
 
 def _narrow(challenge: dict[str, Any], requirement: Requirement) -> dict[str, Any]:
@@ -241,9 +257,15 @@ def _read_receipt(response: httpx.Response) -> dict[str, Any]:
     return {}
 
 
+async def _resolve(session: Key | SessionProvider) -> Key:
+    if isinstance(session, Key):
+        return session
+    return await session()
+
+
 async def fetch(
     cfg: Config,
-    session: Key,
+    session: Key | SessionProvider,
     url: str,
     *,
     method: str = "GET",
@@ -253,22 +275,41 @@ async def fetch(
     our_addresses: set[str] | None = None,
     spend: SpendContext | None = None,
     timeout: float = 90.0,
+    transport: httpx.AsyncBaseTransport | None = None,
 ) -> PaymentResult:
     """Fetch a URL, paying if it challenges.
 
     An unpaid 200 is a perfectly good outcome and costs nothing - not every URL
     behind this call is paid, and we should not insist on spending.
 
+    NOTHING IS RESOLVED FROM `session` UNTIL A PAYMENT IS CERTAIN. Pass a
+    provider (an async callable returning a Key) and it is invoked only after the
+    challenge has been read and every refusal and cap has passed - the last
+    moment before signing. That ordering is the whole point: the caller's provider
+    is what opens and FUNDS a session account, and doing it earlier moved real
+    money into the hotter tier for calls that never paid anyone. A free URL that
+    answers 200 funded a session and spent nothing, which is the common case, not
+    an adversarial one.
+
+    Passing a `Key` directly is still supported for callers that already hold an
+    open session - the CLI does - and behaves identically.
+
     `spend` carries what the caller knows about running totals. Omitting it does
     not disable the caps: per-call limits and the allowlist still apply, and only
     the daily and session-balance checks go quiet for want of numbers.
+
+    `transport` exists for tests, so the ordering above can be asserted against a
+    mock server rather than a live one.
     """
     method = method.upper()
-    our = set(our_addresses or ()) | {session.address}
+    our = set(our_addresses or ())
 
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as http:
+    async with httpx.AsyncClient(
+        timeout=timeout, follow_redirects=True, transport=transport
+    ) as http:
         first = await http.request(method, url, content=body, headers=headers)
         if first.status_code != 402:
+            # No challenge, no payment, and - critically - no session opened.
             return PaymentResult(
                 url=url,
                 status_code=first.status_code,
@@ -292,9 +333,16 @@ async def fetch(
             max_price_micro=max_price_micro,
         )
 
+        # Everything that can refuse has now passed, so a payment is going to
+        # happen. Only here does the session get opened and funded.
+        signer = await _resolve(session)
+        # Its address was unknowable until this instant, and this is the last
+        # moment the check is free.
+        refuse_self_pay(requirement.pay_to, {signer.address})
+
         # The one blocking call in the flow, quarantined. See P0.1.
         payment_header = await asyncio.to_thread(
-            _build_payment_header, _narrow(challenge, requirement), cfg, session
+            _build_payment_header, _narrow(challenge, requirement), cfg, signer
         )
 
         replay_headers = {**(headers or {}), PAYMENT_HEADER: payment_header}
@@ -334,5 +382,5 @@ async def fetch(
             pay_to=requirement.pay_to,
             txid=str(receipt.get("transaction") or receipt.get("txHash") or ""),
             receipt=receipt,
-            payer=session.address,
+            payer=signer.address,
         )

@@ -219,19 +219,38 @@ class Wallet:
         max_price_micro: int | None = None,
     ) -> dict[str, Any]:
         vault, _ = await asyncio.to_thread(open_vault, self.cfg)
-        handle = await self.ensure_session()
         self._last_used = time.monotonic()
 
-        spend = SpendContext(
-            spent_today_micro=handle.ledger.spent_today(),
-            session_remaining_micro=max(
-                0, handle.record.balance_micro - handle.record.spent_micro
-            ),
+        # Read the ledger WITHOUT opening a session. An unpaid URL, a price over
+        # the cap, or an unlisted merchant must all cost nothing - and opening a
+        # session funds a real account, so it happens only when a payment is
+        # certain. `fetch` calls the provider below at that instant and not before.
+        existing = await self._current()
+        ledger = existing.ledger if existing else await asyncio.to_thread(
+            Ledger.load, self.cfg.ledger_path
         )
+        remaining = (
+            max(0, existing.record.balance_micro - existing.record.spent_micro)
+            if existing
+            # No session yet: the cap to check against is what one would be
+            # funded with, since that is what the payment would spend from.
+            else self.cfg.caps.session_balance_micro
+        )
+        spend = SpendContext(
+            spent_today_micro=ledger.spent_today(),
+            session_remaining_micro=remaining,
+        )
+
+        opened: list[SessionHandle] = []
+
+        async def provider() -> Key:
+            handle = await self.ensure_session()
+            opened.append(handle)
+            return handle.key
 
         result: PaymentResult = await fetch(
             self.cfg,
-            handle.key,
+            provider,
             url,
             method=method,
             body=body.encode() if body is not None else None,
@@ -241,9 +260,11 @@ class Wallet:
         )
 
         if result.paid:
-            await asyncio.to_thread(
-                handle.ledger.record_spend, handle.record, result.price_micro
-            )
+            handle = opened[0] if opened else existing
+            if handle is not None:
+                await asyncio.to_thread(
+                    handle.ledger.record_spend, handle.record, result.price_micro
+                )
         self._last_used = time.monotonic()
 
         payload: dict[str, Any] = {

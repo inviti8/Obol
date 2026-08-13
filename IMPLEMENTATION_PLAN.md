@@ -391,12 +391,38 @@ is catchable as `Exception`, and no module outside `cli.py` may contain
 | Idle | Closed on a timer (`idle_timeout_seconds`, default 600). Verified live |
 | Shutdown | Closes the session, with the reaper as the real guarantee — a killed process runs no handler |
 
-**Known wart, not fixed:** `x402_fetch` opens a session before evaluating caps,
-so a call that is certain to be refused still funds one (~0.005 ALGO, and the
-balance sits until idle close). The price is only known after the challenge, and
-the challenge needs no session — the fix is to split `x402.fetch` into a
-challenge step and a pay step so the session opens just before signing. Deferred
-because it is an efficiency wart, not a correctness bug.
+#### The session opened too early — **FIXED 2026-08-12**
+
+Phase 4 shipped with `fetch` taking an already-open session, so the caller had to
+open and **fund** one before the challenge was even read. Measured, not inferred:
+a plain free GET that returned `200` and paid nobody still moved **$5 into a
+session account**. That is the common path, not an adversarial one — the tool
+description invites agents to use `x402_fetch` for URLs that may not be paid.
+
+**Not a security hole.** No cap was bypassed, nothing was signed to a third
+party, and the chain still capped exposure at the session balance. Churn was
+bounded by the idle timeout (~0.005 ALGO per cycle, ceiling around $0.12/day
+sustained), and stranded funds were already covered by the reaper. The real cost
+was design intent: `DESIGN.md` §2 puts money in the session tier *because a
+payment is happening*, and this spent that margin on calls that paid nobody.
+
+**The fix:** `fetch` now takes a `Key` **or** a `SessionProvider` — an async
+callable that opens the session — and resolves it only after the challenge is
+read and every refusal and cap has passed. The self-pay check runs twice as a
+result: once against known-ours addresses before any session exists, once against
+the session address the instant it does, which is the last moment it is free.
+
+Verified live, same call that used to cost $5:
+
+```
+session before: None
+fetch result:   status 200  paid False
+session after : None          vault ALGO unchanged
+```
+
+Nine tests in `tests/test_fetch_ordering.py` pin the ordering against a mock
+transport, with the provider raising on call so "was a session opened" is
+unambiguous — including the inverse, that a payable challenge *does* reach it.
 
 ### Phase 4 — MCP server (original plan)
 
