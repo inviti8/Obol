@@ -17,6 +17,7 @@ dependencies = [
     # server; Obol never serves a 402, it only answers them.
     "x402-avm[avm,httpx]==2.0.2",
     "httpx>=0.27",
+    "pynacl>=1.6.2",
 ]
 
 [project.scripts]

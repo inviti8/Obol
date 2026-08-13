@@ -219,7 +219,12 @@ presents as an intermittent failure on roughly one install in eight.
 Each phase ends with something demonstrable. Do not start the next until the
 current one passes on testnet.
 
-### Phase 1 — Wallet core (no x402, no MCP)
+### Phase 1 — Wallet core (no x402, no MCP) — **DONE 2026-08-12**
+
+Proved on testnet: bootstrap walked by hand, one open/close round trip
+reconciled to the microunit, and all three crash windows recovered from a real
+`os._exit` kill. 34 unit tests, no network. Evidence and the two design
+corrections it forced are in §3.1 below.
 
 `config.py`, `keys.py`, `algorand.py`, `session.py`, `ledger.py`, `cli.py`.
 
@@ -244,6 +249,30 @@ Fund the test vault from the Authen testnet treasury (ALGO plus stand-in ASA
 `769120200`); no faucet is involved. Reconcile to the microunit — the sum of
 vault plus session must be conserved across a full open/close cycle, less exactly
 the fees actually paid.
+
+#### What Phase 1 measured, and the two things it changed
+
+**Cost per session is exactly as designed:** 0.005 ALGO, five transactions at the
+0.001 minimum, confirmed across two full cycles (vault 0.599 → 0.594 → 0.589).
+The 0.21 ALGO minimum balance came back whole every time. Note the fee split,
+which is not obvious: the vault pays two fees at setup, the session pays one for
+its own opt-in and two more at teardown out of its funding.
+
+**Two corrections the design needed, both found by building rather than reading:**
+
+1. **Session keys must be derived from the vault seed, not generated.** The
+   design said memory-only with the address persisted — which cannot be swept,
+   because closing an account requires *signing* from it. See `DESIGN.md` §2.1.
+2. **A closed account does not 404.** algod keeps answering with a zeroed record,
+   so a reaper keyed on existence re-closes accounts it already swept and fails
+   on the fee. Test on holdings, not existence. See `DESIGN.md` §3.
+
+**Also fixed:** all user-facing CLI output is ASCII. Em-dashes render as `?` on a
+stock Windows console, and this is a tool people will run on Windows.
+
+**Left for Phase 3, deliberately:** `caps.py` does not exist yet. `Caps` is
+defined and loaded from config, but nothing enforces it — there is no spend path
+to enforce it on until x402 lands.
 
 ### Phase 2 — x402 payment
 

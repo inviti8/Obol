@@ -29,7 +29,7 @@ session ends the account is closed and its remaining value swept back.
          │  atomic group: fund ALGO → opt in asset → transfer balance
          ▼
   Session  (ephemeral, one per agent session)
-    · fresh keypair, memory only; address persisted for reaping
+    · keypair DERIVED from the vault seed; never written to disk
     · funded with a bounded balance
     · signs x402 payments
     · closed at session end, remainder swept to vault
@@ -39,6 +39,38 @@ session ends the account is closed and its remaining value swept back.
 session balance and nothing else. The vault key signs no payments, so it is never
 handed to an x402 SDK, never in a request path, and can later move to hardware
 without touching payment code.
+
+### 2.1 Session keys are derived, not generated
+
+An earlier draft said the session keypair was random and memory-only, with just
+the address persisted for reaping. **That cannot work, and the way it fails is
+the exact failure the reaper exists to prevent.** Sweeping an orphaned session
+means signing `close_assets_to` and `close_remainder_to` *from the session
+account*. An address alone cannot sign. A crash would therefore strand the
+funds permanently while the ledger sat there naming the money it could not reach.
+
+Each session key is instead derived from the vault seed:
+
+```
+session_seed = HMAC-SHA256(vault_seed, "obol-session-v1" || index_be64)
+```
+
+The vault seed is already 32 uniformly random bytes, so there is no
+HKDF-Extract step to do — RFC 5869 §3.3 says as much. What this buys:
+
+| | |
+|---|---|
+| The reaper always can sign | The ledger's index is enough to regenerate the key, in a fresh process, after a power cut |
+| No session key ever touches disk | The ledger holds indexes and addresses, no secrets |
+| Blast radius is unchanged | HMAC is one-way: a leaked session key exposes that session's balance and says nothing about the vault or any other session |
+| Sessions stay unlinkable to each other | Derived addresses are indistinguishable from random ones without the seed |
+
+The honest limitation in §2 is unchanged — the funding transaction still publicly
+links each session to the vault, and derivation does not alter that.
+
+**One consequence to respect: an index must never be reused.** A repeat derives a
+key for an account that has already been closed. The ledger's `next_index` only
+ever increases, and it is persisted before use.
 
 **Honest limitation.** Sessions are unlinkable *to each other* by address, but the
 funding transaction publicly links each one to the vault. This buys hygiene, not
@@ -151,6 +183,29 @@ A session that dies uncleanly — crash, kill, power loss — strands 0.21 ALGO 
 its remaining USDC in an orphaned account. **Persist every session address to
 disk at creation**, and sweep orphans on next start. Without this, Obol leaks
 money on every unclean exit, silently.
+
+Two things make it actually work, both learned by building it:
+
+**The ledger write must precede the funding group**, not follow it. Written
+after, a crash in the gap leaves a funded account with nothing on disk naming it
+— unrecoverable, and worse, invisible. Written before, the worst case is a record
+pointing at an account that was never created, which costs nothing to resolve.
+
+**"Does the account exist" is the wrong liveness test.** A closed Algorand
+account does not start returning 404; algod goes on answering for it with a
+zeroed record. A reaper that keys on existence therefore tries to re-close
+accounts it has already swept, fails on the fee, and reports failure for every
+session it actually handled correctly. The honest test is whether the account
+holds anything: `algo == 0 and asset == 0` means done.
+
+There are three crash windows, and all three are tested against a real process
+kill rather than a mock (`probes/crash_session.py`):
+
+| Died after | On chain | Recovery |
+|---|---|---|
+| ledger write, before submit | nothing | record closed, nothing lost |
+| group confirmed, before ledger update | funded session | swept, every microunit returned |
+| teardown confirmed, before ledger update | empty account | recognised as done, no wasted fee |
 
 ## 4. Spend controls
 

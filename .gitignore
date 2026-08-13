@@ -10,7 +10,11 @@ __pycache__/
 # Local state. NOTHING under here is ever committed: it holds the vault seed, the
 # session ledger and live account addresses. See DESIGN.md §2 — the vault key is
 # the trust boundary and never leaves the machine.
-.obol/
+#
+# The glob is deliberately wide. `OBOL_DATA_DIR` makes the directory name a
+# choice, and `.obol-dev/` slipped past a bare `.obol/` entry during Phase 1 —
+# with a live seed in it. A seed committed once is a seed leaked forever.
+.obol*/
 *.mnemonic
 *_seed.bin
 probes/out/
