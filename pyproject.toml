@@ -1,7 +1,7 @@
 [project]
-name = "obol"
+name = "obol-wallet"
 version = "0.1.0"
-description = "An MCP server that gives an AI agent a disposable Algorand wallet for x402 payments"
+description = "An MCP server that gives an AI agent a disposable Algorand wallet, so it can pay for x402 resources"
 readme = "README.md"
 # 3.11 for tomllib in the stdlib — network profiles are TOML and that should cost
 # no dependency. See IMPLEMENTATION_PLAN.md, "Packaging".
@@ -20,16 +20,17 @@ dependencies = [
     "pynacl>=1.6.2",
     "mcp>=2.0.0",
     "segno>=1.6.6",
+    # Pillow was an optional [qr] extra on the argument that a wallet should not
+    # carry an imaging stack. That was right for a library and wrong for an
+    # installed application: without it `uvx obol-mcp` produces unbranded,
+    # uncaptioned codes and the whole "show me the QR" flow fails, and the fix
+    # required users to type `--from 'obol-wallet[qr]'`, which nobody does.
+    "pillow>=11",
 ]
 
 [project.scripts]
 obol = "obol.cli:main"
 obol-mcp = "obol.mcp.server:main"
-
-[project.optional-dependencies]
-qr = [
-    "pillow>=12.3.0",
-]
 
 [dependency-groups]
 dev = [

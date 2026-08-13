@@ -1,0 +1,55 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:      # release.yml runs this before it publishes anything
+
+jobs:
+  test:
+    # The wallet is developed on Windows and will mostly be installed on macOS.
+    # Both are in the matrix deliberately: the two bugs this suite exists to
+    # catch - the O_BINARY seed write and the cp1252 QR crash - are Windows-only
+    # and would pass unnoticed on a Linux-only runner.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --frozen --all-extras --dev
+
+      - name: Tests
+        # No network. Every test that would touch a chain lives in probes/ and is
+        # run by hand against testnet, because CI must never hold a funded key.
+        run: uv run pytest tests/ -q
+
+      - name: Build
+        run: uv build
+
+      - name: Install the built wheel into a clean environment
+        # Catches the packaging failure the test suite cannot: an asset missing
+        # from the wheel. The Algorand mark is loaded via importlib.resources, so
+        # it resolves from a source checkout even when it is absent from the
+        # distribution.
+        shell: bash
+        run: |
+          uv venv /tmp/fresh
+          uv pip install --python /tmp/fresh $(ls dist/*.whl)
+          uv run --python /tmp/fresh python -c "
+          from obol.funding import default_logo
+          from obol import __version__
+          logo = default_logo()
+          assert logo is not None, 'the Algorand mark is missing from the wheel'
+          assert logo[:8].hex() == '89504e470d0a1a0a', 'the packaged mark is not a PNG'
+          print('wheel ok', __version__, len(logo), 'byte logo')
+          "

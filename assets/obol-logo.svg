@@ -1,0 +1,36 @@
+<!--
+  PLACEHOLDER LOGO - replace this file.
+
+  Deliberately one self-contained SVG with no external references, referenced
+  from exactly one place (README.md). Dropping a new file at this path is the
+  whole swap; nothing else needs editing. Keep the square viewBox if you want it
+  to keep working as an avatar and a favicon.
+
+  Colours are chosen to read on both a light and a dark page, because GitHub and
+  PyPI render the README on either and an SVG cannot ask which it got.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"
+     role="img" aria-label="Obol">
+  <title>Obol</title>
+
+  <defs>
+    <linearGradient id="coin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b8bf5"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+
+  <!-- The coin. An obol is a small denomination: one purpose, spent and gone. -->
+  <circle cx="256" cy="256" r="232" fill="url(#coin)"/>
+  <circle cx="256" cy="256" r="232" fill="none" stroke="#ffffff" stroke-opacity=".22"
+          stroke-width="10"/>
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#ffffff" stroke-opacity=".30"
+          stroke-width="4" stroke-dasharray="6 12" stroke-linecap="round"/>
+
+  <!-- A struck 'O': the initial, and the hole a coin is not quite pierced with. -->
+  <circle cx="256" cy="256" r="112" fill="none" stroke="#ffffff" stroke-width="34"/>
+
+  <!-- The ferryman's crossing, cut through the mark. -->
+  <path d="M256 92 v56 M256 364 v56" stroke="#ffffff" stroke-width="26"
+        stroke-linecap="round"/>
+</svg>

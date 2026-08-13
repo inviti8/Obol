@@ -256,7 +256,7 @@ def test_styled_geometry_matches_the_symbol():
 
 def test_background_is_dark_and_modules_are_light():
     """The inversion the whole feature is about, asserted on real pixels."""
-    Image = pytest.importorskip("PIL.Image", reason="needs the [qr] extra")
+    Image = pytest.importorskip("PIL.Image", reason="Pillow is a base dependency; skipped only on a stripped install")
     import io
 
     png = qr_styled_png(arc26_uri(ADDR))
@@ -270,7 +270,7 @@ def test_background_is_dark_and_modules_are_light():
 
 
 def test_logo_is_composited_into_the_centre():
-    Image = pytest.importorskip("PIL.Image", reason="needs the [qr] extra")
+    Image = pytest.importorskip("PIL.Image", reason="Pillow is a base dependency; skipped only on a stripped install")
     import io
 
     logo = default_logo()
@@ -362,7 +362,7 @@ def test_white_on_usdc_blue_clears_the_scanning_threshold():
 
 def test_caption_grows_the_image_downward_only():
     """A caption must sit outside the symbol - inside it would eat error correction."""
-    pytest.importorskip("PIL.Image", reason="needs the [qr] extra")
+    pytest.importorskip("PIL.Image", reason="Pillow is a base dependency; skipped only on a stripped install")
     uri = arc26_uri(ADDR)
     plain = qr_styled_png(uri)
     captioned = qr_styled_png(uri, caption="USDC")

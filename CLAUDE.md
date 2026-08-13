@@ -137,8 +137,21 @@ the second payment.
 
 **Development happens on testnet.** Mainnet is guarded, not disabled.
 
-**Closed source for now**; the licence is undecided. No `LICENSE` file, no
-public-repo furniture.
+**Open source, decided 2026-08-13.** Published to PyPI as **`obol-wallet`**
+(account `HVYM`); the import package stays `obol`. Release is tag-driven -
+`.github/workflows/release.yml` runs the tests on three OSes, checks the tag
+against `pyproject.toml`, then publishes. `server.json` registers it with the MCP
+Registry as `io.github.inviti8/obol`.
+
+**The licence is still undecided and is the one thing blocking publication.** A
+public repo with no `LICENSE` is "all rights reserved" by default, which is worse
+than either choice because it reads as open while granting nothing.
+
+This reversed an earlier closed-source default. The argument that settled it is
+already in this file: the ecosystem has over a thousand sellers and approximately
+zero buyers, and **being the wallet everyone installs is worth more than being one
+endpoint's SDK**. Distribution reach is the strategy, not a nicety, and closed
+source was in direct tension with it.
 
 ## Related work in the estate
 

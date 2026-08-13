@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.inviti8/obol",
+  "title": "Obol",
+  "description": "A disposable Algorand wallet for an AI agent, so it can pay for x402 resources without a human provisioning anything.",
+  "repository": {
+    "url": "https://github.com/inviti8/Obol",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "obol-wallet",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "OBOL_NETWORK",
+          "description": "Which chain to use: 'testnet' (the default) or 'mainnet'. Mainnet spends real money.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "testnet"
+        },
+        {
+          "name": "OBOL_DATA_DIR",
+          "description": "Where the vault key and session ledger live. Defaults to %LOCALAPPDATA%\\Obol on Windows and ~/.obol elsewhere. Point this at a NEW directory only if you intend a new wallet: the seed here is the only way back to money already on chain.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

@@ -155,9 +155,10 @@ def qr_styled_png(
     wide, but this is a case where the only real test is scanning it with a
     phone. Plain `qr_bytes` remains the safe option.
 
-    Colours need no extra dependency. A logo needs Pillow: `pip install
-    obol[qr]`. Without it the call refuses rather than silently returning an
-    unbranded code, because a caller asking for a logo wants to know.
+    Pillow is a base dependency, so the composite always works. The import is
+    still guarded because a stripped install is a thing people do, and a caller
+    who asked for a logo should be told it is missing rather than handed an
+    unbranded code.
     """
     import io
 
@@ -172,9 +173,9 @@ def qr_styled_png(
         from PIL import Image
     except ImportError as exc:  # pragma: no cover - depends on the install
         raise WalletError(
-            "A centred logo needs Pillow, which is an optional extra: install "
-            "`obol[qr]`. Colours work without it - omit the logo for a plain "
-            "inverted code."
+            "A centred logo needs Pillow, which is a dependency of this "
+            "package - reinstall it. Colours work without it, so omitting the "
+            "logo still produces a scannable code."
         ) from exc
 
     qr_img = Image.open(io.BytesIO(png)).convert("RGBA")
