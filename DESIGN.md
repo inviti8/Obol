@@ -254,12 +254,74 @@ path that is KYC-free by construction rather than by threshold. Worth keeping
 open by design: an agent that can both spend and receive closes the loop without
 ever touching fiat.
 
-**Dead end: staking to earn the balance.** The regulatory instinct was right -
-earned value crosses no fiat boundary. The economics are not. Algorand requires
-**30,000 ALGO per account** (about $2,372) to be reward-eligible, yielding some
-$118/yr, and someone still has to buy that ALGO with KYC'd fiat. It relocates the
-checkpoint rather than removing it, at roughly 20x the cost of simply spending
-the principal.
+**4. Staking yield as the trial budget - DECIDED, build it.** An earlier draft
+called this a dead end by comparing yield against spending principal. That was
+the wrong comparison: treasury ALGO sits idle regardless, so its yield is free
+and the principal is never consumed. Sized and structured in §5.1.
+
+### 5.1 Staking-funded trial credits
+
+**Decision: build it.** One staking position, a ledger, small USDC grants to new
+installs. Figures below are from Valar's own
+[Platform Overview](https://github.com/ValarStaking/valar/blob/master/Valar-Platform-Overview.pdf),
+read 2026-08-12, not from secondary sources.
+
+**What Valar actually is.** A marketplace connecting stake holders (Delegators)
+to node runners (Validators). Custody never moves: *"Delegators are able to
+receive staking rewards directly from the Algorand network into their wallet,
+without any intermediary."* We pay the Validator a setup fee plus an annual
+operational fee; Valar takes a commission on that fee, not on rewards.
+
+**It does not remove the 30k threshold.** Valar is explicit: the Period 10
+governance vote set reward eligibility at 30,000 ALGO, and *"accounts with less
+than 30k ALGO are not eligible for staking rewards"* — they can participate in
+consensus but earn nothing. Sub-threshold holders need stake pooling or liquid
+staking, which Valar deliberately positions against on decentralisation grounds.
+With ~30k on hand this is moot for us; do not plan on Valar lowering the floor
+for a smaller position.
+
+**Sizing, with the fee subtracted.**
+
+| | |
+|---|---:|
+| Principal (never consumed) | ~30,000 ALGO / ~$2,372 |
+| Gross yield at ~5% | ~$118/yr |
+| Less Validator operational fee | Figure 3.2 spans $0-200/yr for 30k-100k stake |
+| **Net, realistic** | **~$40-80/yr** |
+| Notarizations funded at $0.05 | ~800-1,600/yr |
+| Or: developers given 10 free calls | ~80-160/yr |
+
+Running our own node instead removes the Validator fee entirely and returns net
+to ~$118/yr, at the cost of operating a participation node. **Do not co-locate it
+with the Authen endpoint** — that box has to stay up through 2026-10-08 and a
+consensus node is not a workload to bolt onto it.
+
+That is a genuine free-trial budget and a useless per-agent income. Both are
+true and the distinction is the whole point: it will onboard a hundred-odd
+developers a year and will never fund anyone's real usage.
+
+**Structure: one position, not one per MCP.** The instinct to open a position per
+MCP instance does not survive Valar's own warning that *"the staked funds are not
+locked and may leave the Delegator Beneficiary's wallet at any time"*. ALGO in an
+account on a user's machine is theirs to spend, whatever we intend. The amounts
+also defeat the purpose — 100 ALGO earns about $0.40/yr.
+
+So the per-MCP position is an **accounting fiction, and should be**: one
+HEAVYMETA-controlled account stakes, a ledger tracks per-install allocation, and
+grants are disbursed as USDC. One further operational note from the same
+document — a Delegator contract carries a *maximum* balance term, and exceeding
+it can terminate the contract. A treasury account that also receives revenue
+needs watching, or should be kept separate from the staking account.
+
+**The elegant part.** Yield is a *self-enforcing aggregate ceiling* — the control
+§4 identifies as the only thing that genuinely bounds Sybil loss. We cannot grant
+more than we earned. There is no `TRIAL_CEILING_USDC` to set, argue over or
+mistakenly raise; the mechanism supplies the cap. With one grant per verified
+identity, §4's controls are satisfied by construction.
+
+**And it is legally cleaner than the onramp.** Giving away our own funds is not
+money transmission — we are not moving anyone else's money. None of the
+registration question that §5 raises for the fiat path applies here.
 
 ### What must not be done
 
@@ -385,13 +447,17 @@ enabled.
 - Ephemeral session accounts with atomic setup/teardown, plus the reaper
 - `x402_fetch`, `wallet_status`, `wallet_funding_info`
 - Spend caps enforced in process
-- **No fiat path.** Users bring their own USDC - zero KYC surface, zero
-  money-transmitter exposure, and it serves crypto-native users completely (§5)
-- Any vault is funded by sending USDC to its address
+- Any vault is funded by sending USDC to its address (crypto-native path, zero
+  KYC surface)
 
-**Does not ship:** the embedded onramp (v1.1, gated on legal review - §5), any
-automatic dispenser or granted balance, LogicSig policy, Stellar, bearer
-instruments.
+**v1.1 — both funding paths. These are the product thesis, not extras:**
+
+- **MoonPay onramp**, vault address pre-filled (§5) — the path for real usage.
+  Entry tier is phone and email only, the lightest onboarding available.
+- **Staking-funded trial credits** (§5.1) — the path for first contact.
+
+**Does not ship:** LogicSig policy, Stellar, bearer instruments, multi-provider
+onramp quote comparison.
 
 ### What v1 does not solve, stated plainly
 
@@ -427,10 +493,9 @@ Revisit for v2 once the wallet abstraction has proven itself against one rail.
 3. **Does `x402-avm` work cleanly inside an MCP server's event loop?** The Authen
    work used `x402ClientSync`. MCP servers are async; the sync client may need a
    thread or the async variant needs its own validation.
-4. **Which onramp provider, and does embedding one keep us clear of
-   registration?** Banxa, MoonPay, Sardine, Transak and Wyre all reach Algorand.
-   Choose on lowest-tier limits, geographic coverage, minimum purchase and fee -
-   not brand. The registration question is for a lawyer and gates the fiat path.
+4. **Confirm the referrer position with counsel** before launch, not before
+   building (§8). MoonPay is chosen; revisit only if its Algorand coverage or
+   entry-tier limits change.
 5. **Multiple concurrent sessions per vault** — needed? Adds nonce/ordering
    concerns on vault-signed funding transactions.
 
