@@ -102,19 +102,45 @@ its remaining USDC in an orphaned account. **Persist every session address to
 disk at creation**, and sweep orphans on next start. Without this, Obol leaks
 money on every unclean exit, silently.
 
-## 4. Float security
+## 4. Spend controls
 
-The instinct to protect session keys with cryptography is misdirected. Work the
-threat model:
+**v1 issues no money to anyone.** A vault is funded by sending USDC to its
+address — the same path whether the money is the user's or ours. Demo and
+marketing wallets are covered by that, with no dispenser, no gating, no ceiling
+and no accounting subsystem. Someone sends USDC to an address; that is the whole
+mechanism.
 
-**The attack that matters is not key extraction.** If Obol ever grants a free
-float, an attacker does not need to steal a key — they install it *n* times,
-collect *n* grants, and spend them. If the wallet is general-purpose (which it
-must be), they point it at their own x402 endpoint and the grant becomes their
-revenue. Perfect custody hardening changes nothing.
+Terminology, since the word was overloaded in an earlier draft: **session
+balance** is the USDC sitting in a session account. A **grant** would be money we
+give a stranger. v1 has the first and none of the second.
 
-The exposure is **issuance**, not custody — which is why v1 does not issue. If a
-self-serve trial is ever added, the controls in order of effectiveness are:
+### What bounds a loss
+
+The session balance, enforced by the chain rather than by our code — a
+compromised session key can spend what is in that account and nothing more.
+Everything else is defence in depth:
+
+| Control | Enforced | Default |
+|---|---|---|
+| Session balance | on chain, by balance | user-set, suggest $5 |
+| Per-call maximum | in process, before signing | $0.50 |
+| Daily total | in process, persisted counter | user-set |
+| payTo / host allowlist | in process | off |
+
+These protect the user's own money, so they earn their place regardless of who
+funded the wallet.
+
+### If a self-serve trial is ever added
+
+Not v1. Recorded because the reasoning is easy to get wrong, and the wrong
+instinct is expensive.
+
+**The attack is not key extraction.** An attacker installs Obol *n* times,
+collects *n* grants, and spends them — pointing a general-purpose wallet at
+their own x402 endpoint turns the grant into their revenue. No key is stolen.
+Hardening custody changes nothing, because the exposure is **issuance**.
+
+Controls, in order of effectiveness:
 
 1. **Cap the aggregate, not the per-agent.** If only $2,000 is ever in
    circulation, maximum loss is $2,000 regardless of agent count. This is the
@@ -122,43 +148,13 @@ self-serve trial is ever added, the controls in order of effectiveness are:
 2. **Gate issuance the boring way** — card on file, one grant per verified
    identity. A free-tier abuse problem; no cloud provider solved it with
    cryptography.
-3. **Track granted-float spend separately** from user-funded spend. Volume we
-   paid for is not organic volume, and the distinction cannot be retrofitted once
+3. **Track granted spend separately** from user-funded spend. Volume we paid for
+   is not organic volume, and the distinction cannot be retrofitted once the
    transactions are on chain.
 
-### Funding a wallet is not a feature; dispensing to strangers is
-
-These got conflated in an earlier draft. Separating them removes most of the
-complexity:
-
-**Funding a vault costs zero code.** Send USDC to its address. That is the same
-path whether the money is the user's or ours, so *demo and marketing float need
-no dispenser, no gating, no ceiling, and no accounting subsystem.* For the
-competition submission and for courting the first few dozen developers, someone
-sends USDC to an address. That is the whole mechanism.
-
-**Dispensing automatically to anyone who asks is the expensive part.** It needs a
-hosted service, identity gating, a server-enforced ceiling, abuse monitoring, and
-granted-vs-organic spend accounting. All of that exists solely to survive
-strangers.
-
-**Decision: no automatic dispenser.** Manual grants until the volume of people
-we want to fund makes them impractical. That threshold is realistically in the
-hundreds, and we are nowhere near it.
-
-Revisit when: a self-serve trial becomes the growth bottleneck, or someone wants
-to onboard without talking to us. At that point §4's controls become mandatory
-rather than optional — the aggregate ceiling above all.
-
-**The session float is itself the primary spend cap**, enforced by the chain
-rather than by our code. Everything else is defence in depth:
-
-| Control | Enforced | Default |
-|---|---|---|
-| Session float | on chain, by balance | user-set, suggest $5 |
-| Per-call maximum | in process, before signing | $0.50 |
-| Daily total | in process, persisted counter | user-set |
-| payTo / host allowlist | in process | off |
+Revisit when a self-serve trial becomes the growth bottleneck. Until then,
+manual grants — which is just sending USDC to an address, and scales to the
+hundreds.
 
 ## 5. LogicSig — scope it, then probably defer it
 
@@ -201,10 +197,10 @@ well-known class of Algorand LogicSig bug, and it is exactly the kind of code
 that looks finished while being trivially bypassable. Realistically that is a
 week of work plus an audit, not an afternoon.
 
-**Recommendation: probe now, defer the build.** At a $5 session float the payoff
+**Recommendation: probe now, defer the build.** At a $5 session balance the payoff
 does not justify the risk of getting TEAL subtly wrong — and the aggregate
 trial ceiling in §4 bounds total exposure far more effectively than per-session
-hardening does. Revisit if per-session floats grow by an order of magnitude, or
+hardening does. Revisit if session balances grow by an order of magnitude, or
 if a real customer wants enforced spend policy as a feature.
 
 If the probe says the facilitator rejects LogicSig envelopes, the question closes
