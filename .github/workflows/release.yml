@@ -17,7 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: release # lets a required reviewer be added later without touching this file
     permissions:
-      contents: read
+      # `write`, not `read`: attaching the distributions creates a GitHub
+      # release, and the release API rejects a read-only token with a 403
+      # "Resource not accessible by integration". v0.1.0 published to PyPI fine
+      # and then failed on exactly this.
+      contents: write
       id-token: write    # for trusted publishing, if you switch to it - see below
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +57,10 @@ jobs:
         #     run: uv publish --trusted-publishing always
         #
         # and delete the PYPI secret.
-        run: uv publish --token "${{ secrets.PYPI }}"
+        # --check-url makes a re-run safe: files already on PyPI are skipped
+        # rather than failing the job, so a later step failing does not mean
+        # the whole release cannot be retried.
+        run: uv publish --token "${{ secrets.PYPI }}" --check-url https://pypi.org/simple/
 
       - name: Attach the distributions to the GitHub release
         if: startsWith(github.ref, 'refs/tags/v')

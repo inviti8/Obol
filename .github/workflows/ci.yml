@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_call:      # release.yml runs this before it publishes anything
 
+# Explicitly read-only. If the repository default is raised to `write` so the
+# release workflow can create releases, that default would otherwise apply
+# here too - and the test job has no business writing anything.
+permissions:
+  contents: read
+
 jobs:
   test:
     # The wallet is developed on Windows and will mostly be installed on macOS.
