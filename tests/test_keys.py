@@ -17,8 +17,8 @@ from algosdk import account as algo_account
 from algosdk import encoding as algo_encoding
 from algosdk import mnemonic as algo_mnemonic
 
-from obol.errors import WalletError
-from obol.keys import (
+from obolus.errors import WalletError
+from obolus.keys import (
     Key,
     algorand_address,
     derive_session_key,
@@ -109,7 +109,7 @@ def test_vault_seed_survives_a_write_read_cycle(tmp_path):
     # The pathological seed, written through the same path.
     newline_heavy = bytes([0x0A] * 32)
     forced = tmp_path / "forced_seed.bin"
-    import obol.keys as keys_mod
+    import obolus.keys as keys_mod
 
     original = os.urandom
     try:

@@ -13,8 +13,8 @@ import json
 import httpx
 import pytest
 
-from obol.config import load_config
-from obol.x402 import (
+from obolus.config import load_config
+from obolus.x402 import (
     PaymentRefused,
     PaymentResult,
     _narrow,

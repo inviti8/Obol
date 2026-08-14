@@ -32,11 +32,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from obol import algorand  # noqa: E402
-from obol.config import SESSION_FUNDING_MICRO, load_config  # noqa: E402
-from obol.keys import derive_session_key  # noqa: E402
-from obol.ledger import Ledger  # noqa: E402
-from obol.session import open_vault  # noqa: E402
+from obolus import algorand  # noqa: E402
+from obolus.config import SESSION_FUNDING_MICRO, load_config  # noqa: E402
+from obolus.keys import derive_session_key  # noqa: E402
+from obolus.ledger import Ledger  # noqa: E402
+from obolus.session import open_vault  # noqa: E402
 
 
 def main() -> int:

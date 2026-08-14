@@ -1,4 +1,4 @@
-# Obol — implementation plan
+# Obolus — implementation plan
 
 Build order for the design in [`DESIGN.md`](./DESIGN.md). Read
 [`CLAUDE.md`](./CLAUDE.md) first for the x402 facts that are expensive to
@@ -79,7 +79,7 @@ regardless. It is worth knowing because it is permanent and cheap.
 | 1 | **Run P0.1 before any module code.** | An hour, and the answer shapes every call site. P0.2 (LogicSig) stays cheap-and-optional. |
 | 2 | **Vault key is a file on disk for v1**; `keyring` is for the finished product. | Port `authen/keys.py` verbatim, `O_BINARY` and all. Keychain is a later backend swap behind the same interface. |
 | 3 | **All development runs on testnet rails.** Point at mainnet only for the demo and the first real payment. | No mainnet spend happens by accident, but mainnet is never blocked in code — see decision 4. |
-| 4 | **Obol itself takes the first mainnet payment** against `https://authen.hvym.link`. | Mainnet is a supported target from day one, guarded like `pay_mainnet.py` rather than disabled. |
+| 4 | **Obolus itself takes the first mainnet payment** against `https://authen.hvym.link`. | Mainnet is a supported target from day one, guarded like `pay_mainnet.py` rather than disabled. |
 | 5 | **Closed source for now**; licence undecided. | No `LICENSE` file. Do not add public-repo furniture until the licence is chosen. |
 | 6 | **One session per vault at a time** for v1, serialised. | Sidesteps nonce/ordering on vault-signed funding groups entirely. Revisit only if a real client needs concurrency. |
 
@@ -89,14 +89,14 @@ completed payment against a live mainnet endpoint. That endpoint is already up
 and challenging correctly (verified below), so the gate is one payment away by
 either route:
 
-- **Preferred:** Obol's `x402_fetch` makes it. The wallet's first act is a real
+- **Preferred:** Obolus's `x402_fetch` makes it. The wallet's first act is a real
   purchase from a real merchant — which is also the strongest possible demo.
 - **Backstop:** `D:/repos/Authen/tools/pay_mainnet.py --pay --confirm`, which is
   finished and preflighted today.
 
-The backstop exists so the deadline never depends on Obol shipping. **Do not let
-Obol's schedule put the gate at risk** — if Phase 4 is not solid by roughly
-2026-08-28, run the backstop and let Obol take the *second* payment.
+The backstop exists so the deadline never depends on Obolus shipping. **Do not let
+Obolus's schedule put the gate at risk** — if Phase 4 is not solid by roughly
+2026-08-28, run the backstop and let Obolus take the *second* payment.
 
 ### Verified state of the rails — 2026-08-12
 
@@ -131,7 +131,7 @@ Two consequences, both load-bearing:
    **network-profile setting**, cross-checked against `accepts[].asset` in the
    challenge — see `DESIGN.md` §3.
 2. **Testnet funding is solved and needs no faucet.** The Authen treasury can
-   fund an Obol vault with both ALGO and the stand-in ASA. This retires risk #3.
+   fund an Obolus vault with both ALGO and the stand-in ASA. This retires risk #3.
 
 ### Decisions still open
 
@@ -201,7 +201,7 @@ between a wallet and a footgun, and one of them is not in `DESIGN.md` at all:
 | Rail | Why it exists |
 |---|---|
 | Refuse a non-`https://` resource on mainnet | The facilitator catalogues the URL permanently on `/verify`. ~13% of the live index is loopback junk created this way. |
-| **Refuse when payer == payTo** | Paying yourself is not a payment, and it is the first thing an anti-wash review looks for. Obol must refuse a challenge whose `payTo` is its own vault or session address. |
+| **Refuse when payer == payTo** | Paying yourself is not a payment, and it is the first thing an anti-wash review looks for. Obolus must refuse a challenge whose `payTo` is its own vault or session address. |
 | Refuse a `payTo` that differs from what was expected | A substituted `payTo` sends money to a stranger and registers *their* merchant id. |
 | Preflight ALGO, asset balance and opt-in before building anything | A predictable failure then costs nothing. |
 | Require explicit confirmation to spend on mainnet | The one irreversible action in the system. |
@@ -361,7 +361,7 @@ hit. Unit-testable without network.
 
 ### Phase 4 — MCP server — **DONE 2026-08-12**
 
-`obol/mcp/{server,tools,wallet}.py` plus an `obol-mcp` entry point. Driven by a
+`obol/mcp/{server,tools,wallet}.py` plus an `obolus-mcp` entry point. Driven by a
 real MCP client over a real stdio transport (`probes/mcp_client.py`, SDK `mcp`
 2.0.0, protocol `2026-07-28`): tools listed, `wallet_status` and
 `wallet_funding_info` answered, a cap refusal returned without spending, and
@@ -451,7 +451,7 @@ a vault balance that reconciles to the microunit.
 
 **Deadline interaction:** if this is not comfortably reachable by **2026-08-28**,
 run `D:/repos/Authen/tools/pay_mainnet.py --pay --confirm` to close the gate and
-let Obol take the second payment. The gate is Authen's, not Obol's, and Obol must
+let Obolus take the second payment. The gate is Authen's, not Obolus's, and Obolus must
 never be the reason it slips.
 
 ### Phase 6 — v1.1 funding paths
@@ -486,10 +486,10 @@ the returned attestation verified offline.
 2. **Session boundary.** No clean end signal means balances sit in session
    accounts longer than intended. Mitigated by the reaper, not solved by it.
 3. **The September 1 gate.** Twenty days from writing. Mitigated structurally,
-   not by optimism: `pay_mainnet.py` already closes it, so Obol's schedule and
+   not by optimism: `pay_mainnet.py` already closes it, so Obolus's schedule and
    Authen's deadline are independent. Keep them that way — Phase 5 states the
    fallback date explicitly.
-4. **Paying ourselves.** Obol's demo merchant is Authen, which we own. One
+4. **Paying ourselves.** Obolus's demo merchant is Authen, which we own. One
    payment is the gate and is fine; a wallet that loops against its own endpoint
    is wash traffic and a disqualification risk. `CLAUDE.md`'s house rule — never
    generate volume for its own sake — is enforced in code by the payer ≠ payTo
@@ -507,10 +507,10 @@ is funded on both Authen testnet accounts; no faucet is on the critical path.
 
 ## 6. Definition of done for v1
 
-- A developer with USDC on Algorand installs Obol, runs one command, and their
+- A developer with USDC on Algorand installs Obolus, runs one command, and their
   agent can pay for x402 resources within a budget they set once.
 - No key ever leaves the machine.
 - An unclean exit loses nothing.
 - The wallet works against any x402 resource, not only Authen.
-- **At least one real mainnet settlement was made by Obol itself**, reconciled to
+- **At least one real mainnet settlement was made by Obolus itself**, reconciled to
   the microunit, with the attestation verified offline.

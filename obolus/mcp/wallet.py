@@ -227,7 +227,7 @@ class Wallet:
             {
                 "step": 2,
                 "done": st.opted_in,
-                "who": "obol",
+                "who": "obolus",
                 "action": f"Opt the vault into ASA {asset_id} (`obol vault optin`).",
                 "why": (
                     "Until this is done, USDC sent to the vault is REJECTED outright "

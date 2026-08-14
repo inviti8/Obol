@@ -22,9 +22,9 @@ from algosdk import mnemonic, transaction
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from obol import algorand  # noqa: E402
-from obol.config import load_config  # noqa: E402
-from obol.session import open_vault  # noqa: E402
+from obolus import algorand  # noqa: E402
+from obolus.config import load_config  # noqa: E402
+from obolus.session import open_vault  # noqa: E402
 
 ACCOUNTS = Path(
     os.environ.get("AUTHEN_ROOT", r"D:/repos/Authen")

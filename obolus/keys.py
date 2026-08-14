@@ -37,6 +37,15 @@ from .errors import WalletError
 from nacl.signing import SigningKey
 
 SEED_FILENAME = "vault_seed.bin"
+
+# DO NOT CHANGE THIS STRING. It is the HMAC domain separator for session
+# derivation, not a name: every session address is HMAC(vault_seed, SESSION_INFO
+# || index). Change a byte and the same vault seed derives an entirely different
+# set of session accounts — funds sitting in existing sessions become
+# underivable, and the ledger's recorded addresses stop matching what the code
+# reproduces. It deliberately kept the pre-Obolus spelling through the rename for
+# exactly this reason. A new value would need a version bump and a migration that
+# sweeps the old sessions first.
 SESSION_INFO = b"obol-session-v1"
 
 

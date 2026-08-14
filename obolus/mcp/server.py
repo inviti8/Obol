@@ -1,7 +1,7 @@
 """The MCP server: wiring, lifecycle, and the stdio entry point.
 
-    obol-mcp                 # testnet, the default
-    OBOL_NETWORK=mainnet obol-mcp
+    obolus-mcp                 # testnet, the default
+    OBOL_NETWORK=mainnet obolus-mcp
 
 Startup order matters and is deliberate:
 
@@ -32,7 +32,7 @@ from ..config import Config, load_config
 from .tools import register
 from .wallet import Wallet
 
-log = logging.getLogger("obol.mcp")
+log = logging.getLogger("obolus.mcp")
 
 INSTRUCTIONS = """\
 Obol is a disposable Algorand wallet for paying x402 resources.
@@ -64,7 +64,7 @@ def build_server(cfg: Config) -> MCPServer:
             await wallet.shutdown()
 
     server = MCPServer(
-        name="obol",
+        name="obolus",
         title="Obol - x402 wallet",
         version="0.1.0",
         instructions=INSTRUCTIONS,

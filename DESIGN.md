@@ -1,4 +1,4 @@
-# Obol — design
+# Obolus — design
 
 Read [`CLAUDE.md`](./CLAUDE.md) first for orientation and the x402 facts that
 are expensive to rediscover.
@@ -11,7 +11,7 @@ refusals in §7, all of which came out of reading the live rails.
 
 ## 1. The shape in one paragraph
 
-An agent asks Obol to fetch a URL. Obol tries it, gets a `402`, signs an Algorand
+An agent asks Obolus to fetch a URL. Obolus tries it, gets a `402`, signs an Algorand
 USDC payment from a short-lived session account, replays the request with the
 `PAYMENT-SIGNATURE` header, and returns the body. The human approved a session
 budget once; individual payments under the cap do not interrupt them. When the
@@ -126,7 +126,7 @@ is forced:
 | # | Step | Who | Why it cannot move |
 |---|---|---|---|
 | 1 | Send ≥ 0.2 ALGO to the vault | human | An account with no balance cannot pay the fee for its own opt-in, and 0.1 of it is locked as the ASA slot minimum |
-| 2 | Vault opts into the payment asset | Obol | Signed by the vault key. The **one** transaction the vault signs that is not a session funding group |
+| 2 | Vault opts into the payment asset | Obolus | Signed by the vault key. The **one** transaction the vault signs that is not a session funding group |
 | 3 | Send USDC to the vault | human | Before step 2 this is **rejected outright** — there is no pending state, the transfer simply fails |
 
 Three human steps, in order, at exactly the point where the README promises
@@ -181,7 +181,7 @@ that only checks amount and receiver is worthless — see §6.
 
 A session that dies uncleanly — crash, kill, power loss — strands 0.21 ALGO plus
 its remaining USDC in an orphaned account. **Persist every session address to
-disk at creation**, and sweep orphans on next start. Without this, Obol leaks
+disk at creation**, and sweep orphans on next start. Without this, Obolus leaks
 money on every unclean exit, silently.
 
 Two things make it actually work, both learned by building it:
@@ -246,7 +246,7 @@ funded the wallet.
 Not v1. Recorded because the reasoning is easy to get wrong, and the wrong
 instinct is expensive.
 
-**The attack is not key extraction.** An attacker installs Obol *n* times,
+**The attack is not key extraction.** An attacker installs Obolus *n* times,
 collects *n* grants, and spends them — pointing a general-purpose wallet at
 their own x402 endpoint turns the grant into their revenue. No key is stolen.
 Hardening custody changes nothing, because the exposure is **issuance**.
@@ -301,12 +301,12 @@ This is the constraint that decides the architecture.
 | We take fiat and send USDC | selling crypto for money | money transmission; licensing in ~50 states |
 | We hold a pooled balance and pay on their behalf | custody | money transmission, plus the payer is us again |
 
-Only the first is viable for a small team, and it is also the simplest. **Obol
+Only the first is viable for a small team, and it is also the simplest. **Obolus
 embeds an onramp; it does not build one.** The provider does KYC, takes the card,
 and is the money transmitter. We never touch fiat or hold anyone's crypto.
 
 This also keeps the payer genuinely third-party, which is what stops funded usage
-from looking like a round trip (§4, and `CLAUDE.md` on why Obol is not an Authen
+from looking like a round trip (§4, and `CLAUDE.md` on why Obolus is not an Authen
 client).
 
 ### The flow
@@ -317,7 +317,7 @@ wallet_funding_info()
     pre-filled, plus the current balance
   → human opens it, does KYC once, pays by card
   → USDC lands directly in the vault
-  → Obol polls the balance and reports when it clears
+  → Obolus polls the balance and reports when it clears
 ```
 
 ### There is no machine-to-machine exemption
@@ -343,7 +343,7 @@ That gives three honest ways to reduce it, and one dead end.
 ### Reducing the KYC surface
 
 **1. Do not cross the fiat boundary at all - the v1 default.** If the user
-arrives holding USDC, Obol has *zero* KYC surface. Whatever verification happened
+arrives holding USDC, Obolus has *zero* KYC surface. Whatever verification happened
 did so at their exchange, and is neither our concern nor our liability. This
 serves crypto-native users completely and is the simplest thing that works.
 
@@ -464,14 +464,14 @@ Splitting a purchase into smaller ones to stay under a verification threshold is
 **structuring**, and it is a criminal offence independently of whatever the
 underlying activity is. Operating at genuinely small amounts because that is the
 product is fine. Engineering transaction sizes to avoid checks is not. Nothing in
-Obol should ever automate "keep it under the limit".
+Obolus should ever automate "keep it under the limit".
 
 **This section is engineering research, not legal advice.** Before any fiat path
 ships it needs a lawyer - specifically on whether embedding a third-party onramp
 widget keeps us clear of money-transmitter registration, which is the assumption
 the whole design rests on.
 
-### Why this matters beyond Obol
+### Why this matters beyond Obolus
 
 Getting USDC onto Algorand is harder than onto Base or Solana, and no major
 onramp treats it as a first-class destination. That is a structural headwind for
@@ -480,7 +480,7 @@ the field data in `CLAUDE.md`: 1,204 listed resources, but 13 wallets accounting
 for 90% of volume. The buyers who exist are the ones who were determined enough
 to solve funding themselves.
 
-Obol cannot fix the chain's onramp coverage. It can remove every step after it.
+Obolus cannot fix the chain's onramp coverage. It can remove every step after it.
 
 ## 6. LogicSig — scope it, then probably defer it
 
@@ -559,7 +559,7 @@ x402_discover(query=None, max_price_usdc=None)
 ```
 
 No `authen_notarize` tool. Authen is reached through `x402_fetch` like anything
-else — the moment Obol has first-class Authen verbs it stops being a wallet.
+else — the moment Obolus has first-class Authen verbs it stops being a wallet.
 
 ### Refusals that are not caps
 
@@ -588,7 +588,7 @@ enabled.
 ### 7.1 What the client actually does — measured, and not what the above assumes
 
 Run against Claude Code on 2026-08-13, on testnet. The paragraph above describes
-what Obol *wants*. This is what happened:
+what Obolus *wants*. This is what happened:
 
 **The human was prompted once, on the first payment. Four more settled with no
 prompt at all** — including the ones that walked into the daily cap. The approval
@@ -617,7 +617,7 @@ reviewer will ask about exactly this gap, so it is written down rather than
 discovered.
 
 **What follows from it.** The client cannot be relied on to bound spending
-per-session, so anything that must hold has to hold inside Obol:
+per-session, so anything that must hold has to hold inside Obolus:
 
 1. **The session balance is still the real ceiling**, on chain, and is unaffected
    by any of this. That remains the honest answer to "what is the worst case".
@@ -625,7 +625,7 @@ per-session, so anything that must hold has to hold inside Obol:
    ranks them as secondary on the assumption that a human approves each session.
    That assumption is now known to be false in at least one major client.
 3. **A fresh session with a raised balance deserves a fresh acknowledgement**,
-   recorded by Obol rather than the client — the one mitigation that does not
+   recorded by Obolus rather than the client — the one mitigation that does not
    depend on client behaviour. Not built; the shape would be a stored
    acknowledgement in the data dir that a materially larger `session_balance`
    invalidates.
@@ -644,7 +644,7 @@ re-measure before claiming anything about them.
 
 - Algorand mainnet + testnet. **Development runs on testnet; mainnet is for the
   demo and for real payments.** Mainnet is guarded, never disabled — the first
-  real settlement is meant to be Obol's own
+  real settlement is meant to be Obolus's own
 - Python (rationale below)
 - Vault key in a 0600 file in the data dir, written atomically. **`keyring` is
   the finished-product backend, not a v1 requirement** — it goes behind the same
@@ -722,7 +722,7 @@ one screen.
    Authen booted on loopback, on testnet.
 4. Spend caps, the §7 refusals, and the consent model.
 5. Wrap in an MCP server; verify against a real MCP client.
-6. **The first mainnet payment, made by Obol**, against `authen.hvym.link`.
+6. **The first mainnet payment, made by Obolus**, against `authen.hvym.link`.
 7. LogicSig facilitator probe on testnet (§6). Cheap, permanent, and blocks
    nothing — §6 recommends deferring the policy build regardless. Do it whenever
    there is an idle afternoon.

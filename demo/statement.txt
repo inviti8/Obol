@@ -1,4 +1,4 @@
-Obol testnet walkthrough
+Obolus testnet walkthrough
 ========================
 
 This file exists to be notarized.
@@ -13,4 +13,4 @@ Change a single character below and the digest changes, which is the whole point
   session    short-lived, funded per session, signs the payment
   facilitator sponsors the transaction fee, so the buyer spends no ALGO
 
-Written 2026-08-13 for the first run of the Obol MCP server on Algorand testnet.
+Written 2026-08-13 for the first run of the Obolus MCP server on Algorand testnet.

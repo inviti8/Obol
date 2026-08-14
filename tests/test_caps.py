@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from obol.caps import SpendContext, allowlist_permits, check, looks_like_address
-from obol.config import load_config
-from obol.errors import CapExceeded, PaymentRefused
+from obolus.caps import SpendContext, allowlist_permits, check, looks_like_address
+from obolus.config import load_config
+from obolus.errors import CapExceeded, PaymentRefused
 
 MERCHANT = "NJO3MQADL3UO236P75NAV4NCVFNA2SVVYH6BVUO5MFMIHBZVXNAQNNNFYI"
 OTHER = "RKCLWLQTCB5ZAER647M3CTDZ7TPYAUMSSX6FPI767J43R3RP3PEGTJDOJA"

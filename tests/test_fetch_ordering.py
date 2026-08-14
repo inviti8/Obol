@@ -21,9 +21,9 @@ import json
 import httpx
 import pytest
 
-from obol.config import load_config
-from obol.errors import CapExceeded, PaymentRefused
-from obol.x402 import fetch
+from obolus.config import load_config
+from obolus.errors import CapExceeded, PaymentRefused
+from obolus.x402 import fetch
 
 TESTNET_CAIP2 = "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI="
 MERCHANT = "NJO3MQADL3UO236P75NAV4NCVFNA2SVVYH6BVUO5MFMIHBZVXNAQNNNFYI"

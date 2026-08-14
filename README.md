@@ -1,12 +1,12 @@
-<!-- mcp-name: io.github.inviti8/obol -->
+<!-- mcp-name: io.github.inviti8/obolus -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/inviti8/Obol/main/assets/obol-logo.svg" alt="Obol" width="120" height="120">
+  <img src="https://raw.githubusercontent.com/inviti8/Obolus/main/assets/obolus-logo.svg" alt="Obolus" width="120" height="120">
 </p>
 
-<h1 align="center">Obol</h1>
+<h1 align="center">Obolus</h1>
 
-<!-- The logo above is a placeholder. Replace assets/obol-logo.svg; the only
+<!-- The logo above is a placeholder. Replace assets/obolus-logo.svg; the only
      reference is the absolute URL above, which is absolute because PyPI does
      not resolve relative paths in a long description. -->
 
@@ -25,7 +25,7 @@ agent → x402_fetch(url) → 402 → sign → pay → body
 
 x402 has over a thousand listed resources and almost no buyers — a handful of
 wallets account for nearly all volume, and they are scripted loops rather than
-agents. The rail exists; nothing can reach it. Obol is the buyer-side piece:
+agents. The rail exists; nothing can reach it. Obolus is the buyer-side piece:
 account setup, opt-in, signing and sweeping handled invisibly, so an agent just
 spends.
 
@@ -34,17 +34,17 @@ spends.
 ## Install
 
 ```bash
-uv tool install obol-wallet
+uv tool install obolus
 ```
 
 `uv tool install` rather than `uvx`: `uvx` re-resolves dependencies on every
 invocation, which is the wrong trade for something an agent calls constantly.
-`pipx install obol-wallet` works too.
+`pipx install obolus` works too.
 
 ### Add it to Claude Code
 
 ```bash
-claude mcp add obol -e OBOL_NETWORK=testnet -- obol-mcp
+claude mcp add obolus -e OBOLUS_NETWORK=testnet -- obolus-mcp
 ```
 
 ### Add it to any other MCP client
@@ -52,15 +52,15 @@ claude mcp add obol -e OBOL_NETWORK=testnet -- obol-mcp
 ```json
 {
   "mcpServers": {
-    "obol": {
-      "command": "obol-mcp",
-      "env": { "OBOL_NETWORK": "testnet" }
+    "obolus": {
+      "command": "obolus-mcp",
+      "env": { "OBOLUS_NETWORK": "testnet" }
     }
   }
 }
 ```
 
-**It starts on testnet.** Mainnet is never disabled — Obol is meant to make real
+**It starts on testnet.** Mainnet is never disabled — Obolus is meant to make real
 payments — but it is never what you get by forgetting to choose.
 
 ---
@@ -77,7 +77,7 @@ obol vault qr       # scannable codes for the two things you can send
 | # | Step | Who |
 |---|---|---|
 | 1 | Send ≥ 0.21 ALGO to the vault | you |
-| 2 | Opt the vault into USDC (`obol vault optin`) | Obol |
+| 2 | Opt the vault into USDC (`obol vault optin`) | Obolus |
 | 3 | Send USDC | you |
 
 **Step 3 before step 2 fails.** An Algorand account cannot receive an asset it
@@ -140,7 +140,7 @@ challenge that is not a well-formed x402 v2 `402`.
 ## Safety
 
 **Your seed is the only way back to your money.** It lives in your data
-directory. Pointing `OBOL_DATA_DIR` at a new location creates a *new* wallet; it
+directory. Pointing `OBOLUS_DATA_DIR` at a new location creates a *new* wallet; it
 does not move the old one. Back the directory up.
 
 **File access is off by default.** `x402_fetch` can send a file to a paid
@@ -151,7 +151,7 @@ is not something a spend cap can bound.
 
 **Approval is per tool, not per payment.** Most MCP clients ask once and remember.
 That means the caps above are your real spending boundary, not the prompt — see
-[`DESIGN.md`](https://github.com/inviti8/Obol/blob/main/DESIGN.md) §7.1, which documents what was measured rather than
+[`DESIGN.md`](https://github.com/inviti8/Obolus/blob/main/DESIGN.md) §7.1, which documents what was measured rather than
 what was assumed.
 
 **A settled payment proves settlement and nothing else** — not that the resource
@@ -161,11 +161,11 @@ was correct, honest, or worth its price.
 
 ## Documentation
 
-- **[CLAUDE.md](https://github.com/inviti8/Obol/blob/main/CLAUDE.md)** — orientation, and the x402 facts that cost real
+- **[CLAUDE.md](https://github.com/inviti8/Obolus/blob/main/CLAUDE.md)** — orientation, and the x402 facts that cost real
   debugging time to learn.
-- **[DESIGN.md](https://github.com/inviti8/Obol/blob/main/DESIGN.md)** — architecture, the security model, and the
+- **[DESIGN.md](https://github.com/inviti8/Obolus/blob/main/DESIGN.md)** — architecture, the security model, and the
   limitations stated plainly.
-- **[IMPLEMENTATION_PLAN.md](https://github.com/inviti8/Obol/blob/main/IMPLEMENTATION_PLAN.md)** — build order and what
+- **[IMPLEMENTATION_PLAN.md](https://github.com/inviti8/Obolus/blob/main/IMPLEMENTATION_PLAN.md)** — build order and what
   each phase actually proved.
 
 ## Status

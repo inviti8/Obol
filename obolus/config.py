@@ -20,6 +20,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .errors import WalletError
+from .keys import SEED_FILENAME
 
 # The real Circle USDC asset ids. Anything else is not USDC and is not called it.
 USDC_ASSET_IDS = frozenset({31566704, 10458941})
@@ -144,11 +145,34 @@ class Config:
 
 
 def default_data_dir() -> Path:
+    """Where the vault seed and session ledger live.
+
+    Renaming Obol to Obolus deliberately does NOT move this on its own. The seed
+    here is the only way back to money already on chain, so a rename that
+    silently pointed at a fresh empty directory would look like a working install
+    with an empty wallet — the worst possible presentation of "your funds are
+    unreachable". An install that predates the rename keeps using its existing
+    directory until someone moves it on purpose.
+
+    Precedence: OBOLUS_DATA_DIR, then the legacy OBOL_DATA_DIR, then the new
+    default location, then the legacy default IF it already exists.
+    """
+    if env := os.environ.get("OBOLUS_DATA_DIR"):
+        return Path(env).expanduser()
     if env := os.environ.get("OBOL_DATA_DIR"):
         return Path(env).expanduser()
+
     if os.name == "nt" and (local := os.environ.get("LOCALAPPDATA")):
-        return Path(local) / "Obol"
-    return Path.home() / ".obol"
+        new, legacy = Path(local) / "Obolus", Path(local) / "Obol"
+    else:
+        new, legacy = Path.home() / ".obolus", Path.home() / ".obol"
+
+    # Only adopt the legacy path when it actually holds a vault. A bare empty
+    # directory left behind by an uninstall should not pin a fresh install to
+    # the old name forever.
+    if not new.exists() and (legacy / SEED_FILENAME).exists():
+        return legacy
+    return new
 
 
 def load_config(network: str | None = None, data_dir: Path | None = None) -> Config:
@@ -165,6 +189,9 @@ def load_config(network: str | None = None, data_dir: Path | None = None) -> Con
 
     name = (
         network
+        # OBOL_* is the pre-rename spelling, still honoured so an existing
+        # install keeps working. New docs use OBOLUS_*.
+        or os.environ.get("OBOLUS_NETWORK")
         or os.environ.get("OBOL_NETWORK")
         or raw.get("network")
         or "testnet"

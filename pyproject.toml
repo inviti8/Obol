@@ -1,5 +1,5 @@
 [project]
-name = "obol-wallet"
+name = "obolus"
 version = "0.1.0"
 description = "An MCP server that gives an AI agent a disposable Algorand wallet, so it can pay for x402 resources"
 readme = "README.md"
@@ -34,22 +34,22 @@ dependencies = [
     "segno>=1.6.6",
     # Pillow was an optional [qr] extra on the argument that a wallet should not
     # carry an imaging stack. That was right for a library and wrong for an
-    # installed application: without it `uvx obol-mcp` produces unbranded,
+    # installed application: without it `uvx obolus-mcp` produces unbranded,
     # uncaptioned codes and the whole "show me the QR" flow fails, and the fix
-    # required users to type `--from 'obol-wallet[qr]'`, which nobody does.
+    # required users to type `--from 'obolus[qr]'`, which nobody does.
     "pillow>=11",
 ]
 
 # Must come AFTER every bare key of [project]: a sub-table opened mid-table
 # swallows everything below it, which is how `dependencies` briefly became a URL.
 [project.urls]
-Homepage = "https://github.com/inviti8/Obol"
-Repository = "https://github.com/inviti8/Obol"
-Issues = "https://github.com/inviti8/Obol/issues"
+Homepage = "https://github.com/inviti8/Obolus"
+Repository = "https://github.com/inviti8/Obolus"
+Issues = "https://github.com/inviti8/Obolus/issues"
 
 [project.scripts]
-obol = "obol.cli:main"
-obol-mcp = "obol.mcp.server:main"
+obolus = "obolus.cli:main"
+obolus-mcp = "obolus.mcp.server:main"
 
 [dependency-groups]
 dev = [
@@ -62,7 +62,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["obol"]
+packages = ["obolus"]
 
 # The brand asset the QR renderer composites must ship with the wheel; without
 # this the styled code silently loses its logo on an installed copy.

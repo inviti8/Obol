@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from obol.config import PROFILES, Caps, load_config
-from obol.errors import WalletError
+from obolus.config import PROFILES, Caps, load_config
+from obolus.errors import WalletError
 
 
 def test_defaults_to_testnet(tmp_path, monkeypatch):

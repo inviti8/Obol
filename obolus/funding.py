@@ -275,7 +275,7 @@ def default_logo() -> bytes | None:
 
     try:
         return (
-            resources.files("obol.assets")
+            resources.files("obolus.assets")
             .joinpath("algorand-logo.png")
             .read_bytes()
         )

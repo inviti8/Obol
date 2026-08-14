@@ -19,8 +19,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from algosdk import account as algo_account
 
-from obol.errors import WalletError
-from obol.funding import arc26_uri, funding_targets, qr_bytes, qr_terminal
+from obolus.errors import WalletError
+from obolus.funding import arc26_uri, funding_targets, qr_bytes, qr_terminal
 
 # A real, checksum-valid address; the module rejects anything else.
 _, ADDR = algo_account.generate_account()
@@ -184,14 +184,14 @@ class _FakeStream:
 
 def test_blocks_are_not_printable_on_cp1252():
     """A stock Windows console has no U+2588 and raises rather than degrading."""
-    from obol.funding import blocks_are_printable
+    from obolus.funding import blocks_are_printable
 
     assert not blocks_are_printable(_FakeStream("cp1252"))
     assert blocks_are_printable(_FakeStream("utf-8"))
 
 
 def test_unknown_encoding_falls_back_rather_than_raising():
-    from obol.funding import blocks_are_printable
+    from obolus.funding import blocks_are_printable
 
     assert not blocks_are_printable(_FakeStream("not-a-real-codec"))
 
@@ -216,7 +216,7 @@ import struct
 
 import segno
 
-from obol.funding import LOGO_FRACTION, STYLED_ERROR, default_logo, qr_styled_png
+from obolus.funding import LOGO_FRACTION, STYLED_ERROR, default_logo, qr_styled_png
 
 pillow = pytest.importorskip if False else None
 
@@ -302,14 +302,14 @@ def test_packaged_logo_resolves_as_a_resource():
 
 def test_algo_and_usdc_get_distinct_backgrounds():
     """Colour is a claim about which asset this is, so they must not collide."""
-    from obol.funding import THEME_ALGO, THEME_USDC
+    from obolus.funding import THEME_ALGO, THEME_USDC
 
     assert THEME_ALGO.background != THEME_USDC.background
     assert THEME_ALGO.label == "ALGO" and THEME_USDC.label == "USDC"
 
 
 def test_unknown_asset_does_not_borrow_usdc_blue():
-    from obol.funding import THEME_USDC, theme_for
+    from obolus.funding import THEME_USDC, theme_for
 
     theme = theme_for("ASA 769120200")
     assert theme.background != THEME_USDC.background
@@ -317,7 +317,7 @@ def test_unknown_asset_does_not_borrow_usdc_blue():
 
 
 def test_theme_lookup_is_case_insensitive():
-    from obol.funding import THEME_USDC, theme_for
+    from obolus.funding import THEME_USDC, theme_for
 
     assert theme_for("usdc").background == THEME_USDC.background
 
@@ -345,7 +345,7 @@ def test_stand_in_asset_is_not_called_usdc():
 
 def test_white_on_usdc_blue_clears_the_scanning_threshold():
     """Contrast is a scanability property, not a taste one."""
-    from obol.funding import THEME_USDC
+    from obolus.funding import THEME_USDC
 
     def luminance(hexc: str) -> float:
         parts = [int(hexc[i : i + 2], 16) / 255 for i in (1, 3, 5)]

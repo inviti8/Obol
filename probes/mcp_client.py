@@ -4,7 +4,7 @@
 
 Phase 4's done-condition is "an agent completes a paid notarization without the
 human touching a key". This is that, minus the model: a genuine MCP client
-spawns `obol-mcp` as a subprocess, negotiates the protocol, lists the tools, and
+spawns `obolus-mcp` as a subprocess, negotiates the protocol, lists the tools, and
 calls them. Nothing here reaches into `obol` internals - if a tool is misdeclared
 or a return value will not serialise, this fails exactly where a real client
 would.
@@ -50,7 +50,7 @@ async def main() -> int:
     # StdioServerParameters is what selects the subprocess transport.
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "obol.mcp.server"],
+        args=["-m", "obolus.mcp.server"],
         env=dict(os.environ),  # carries OBOL_DATA_DIR / OBOL_NETWORK through
         cwd=str(Path(__file__).resolve().parent.parent),
     )

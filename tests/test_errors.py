@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from obol.errors import (
+from obolus.errors import (
     CapExceeded,
     ObolError,
     PaymentRefused,
@@ -48,7 +48,7 @@ def test_no_library_module_raises_systemexit():
     import pathlib
 
     offenders = []
-    for path in pathlib.Path("obol").rglob("*.py"):
+    for path in pathlib.Path("obolus").rglob("*.py"):
         if path.name == "cli.py":
             continue  # the CLI is allowed to terminate; it is the process owner
         text = path.read_text(encoding="utf-8")

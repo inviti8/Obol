@@ -3,7 +3,7 @@
     uv run python probes/verify_attestation.py
 
 This is Phase 2's done-condition, and it is deliberately end to end: pay through
-`obol.x402.fetch`, then check the result offline against the node's published key
+`obolus.x402.fetch`, then check the result offline against the node's published key
 without asking the node to confirm anything about it.
 
 WHY OFFLINE VERIFICATION IS THE POINT
@@ -34,9 +34,9 @@ from nacl.signing import VerifyKey
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from obol.config import load_config  # noqa: E402
-from obol.session import live_session, open_vault  # noqa: E402
-from obol.x402 import fetch  # noqa: E402
+from obolus.config import load_config  # noqa: E402
+from obolus.session import live_session, open_vault  # noqa: E402
+from obolus.x402 import fetch  # noqa: E402
 
 BASE = "http://127.0.0.1:8402"
 NOTARIZE = f"{BASE}/api/v1/notarize"

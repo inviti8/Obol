@@ -302,7 +302,7 @@ def cmd_address(cfg: Config, args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="obol", description=__doc__)
+    ap = argparse.ArgumentParser(prog="obolus", description=__doc__)
     ap.add_argument(
         "--network",
         choices=sorted(PROFILES),

@@ -1,4 +1,4 @@
-# Obol — agent brief
+# Obolus — agent brief
 
 An **MCP server that gives an AI agent a disposable Algorand wallet**, so it can
 pay for x402 resources without a human provisioning anything.
@@ -6,7 +6,7 @@ pay for x402 resources without a human provisioning anything.
 The name is the coin paid to the ferryman for passage: a small denomination, one
 purpose, spent and gone.
 
-## What Obol is, and is not
+## What Obolus is, and is not
 
 **Is:** a general-purpose x402 payment client exposed over the Model Context
 Protocol. Give it a URL that answers `402`, and it pays and returns the body.
@@ -47,12 +47,12 @@ requires an Algorand account, a USDC opt-in, a funded balance and transaction
 signing. No agent framework ships any of that. The rail exists; nothing can
 reach it.
 
-That is the gap Obol fills. It is also why this is a better product than another
+That is the gap Obolus fills. It is also why this is a better product than another
 endpoint — the ecosystem has 1,204 sellers and approximately zero buyers.
 
 ## Why not just an Authen client
 
-If Obol only pays Authen, then every settlement is one party we control paying
+If Obolus only pays Authen, then every settlement is one party we control paying
 another party we control. On chain that is a round trip, and the competition's
 leaderboard pool is explicitly subject to anti-wash review. Real customer money
 arriving via Stripe does not change what an auditor sees.
@@ -116,32 +116,54 @@ you do not intend to keep.
 [Pakana](https://www.pakana.net/developers/) may provide x402 facilitation there
 (ZK private payments on Stellar, early access). If it does, it is more
 interesting than a second rail: it would break the vault→session funding link
-natively, which is otherwise the weak point in Obol's unlinkability story.
+natively, which is otherwise the weak point in Obolus's unlinkability story.
 
 One Ed25519 key is simultaneously a Stellar and an Algorand address, so the key
 layer is already chain-agnostic. It is the payment protocol that differs.
 
 ## The near-term goal, and the deadline that is not ours
 
-**Obol should make its own first mainnet payment**, against the live Authen node
+**Obolus should make its own first mainnet payment**, against the live Authen node
 at `https://authen.hvym.link/api/v1/notarize` ($0.05, ASA `31566704`, tag
 `x402-global-challenge`). A wallet whose first act is a real purchase from a real
 merchant is the demo.
 
 Authen has a hard competition gate of **2026-09-01, 11:45pm EST** requiring one
-real settled mainnet payment. That gate is **already closable without Obol** —
+real settled mainnet payment. That gate is **already closable without Obolus** —
 `D:/repos/Authen/tools/pay_mainnet.py --pay --confirm` is finished and
-preflighted. Obol is the preferred route, never the dependency. If Obol is not
-ready by roughly 2026-08-28, close the gate with the backstop and let Obol take
+preflighted. Obolus is the preferred route, never the dependency. If Obolus is not
+ready by roughly 2026-08-28, close the gate with the backstop and let Obolus take
 the second payment.
 
 **Development happens on testnet.** Mainnet is guarded, not disabled.
 
-**Open source, decided 2026-08-13.** Published to PyPI as **`obol-wallet`**
-(account `HVYM`); the import package stays `obol`. Release is tag-driven -
+**Renamed Obol -> Obolus, 2026-08-14.** Three unrelated projects shipped as
+"Obol" in this exact market: obol.sh (an x402 developer platform on Base),
+`dev.fly.obol-x402/obol` (an x402 MCP server, already in the MCP Registry we
+publish to), and Obol Network (Ethereum DVT staking, which owns the word in
+crypto search). Renamed before the first Registry submission, because a Registry
+entry claims the name and PyPI distributions cannot be renamed - after
+publishing, the same move costs a deprecated entry, a second package and broken
+links. Same word, same ferryman, no collisions.
+
+Two things deliberately did NOT change, and both are load-bearing:
+
+  * `SESSION_INFO = b"obol-session-v1"` in `keys.py`. It is an HMAC domain
+    separator, not a name. Change a byte and the same vault seed derives a
+    different set of session accounts - funds in existing sessions become
+    underivable and the ledger stops matching what the code reproduces.
+  * The data directory. `default_data_dir()` prefers the new location but falls
+    back to a legacy `Obol`/`.obol` directory **when it actually holds a seed**,
+    and `OBOL_DATA_DIR` / `OBOL_NETWORK` still work alongside the `OBOLUS_*`
+    spellings. The seed is the only way back to money already on chain, so a
+    rename that silently pointed somewhere empty would present as a working
+    install with an empty wallet.
+
+**Open source, decided 2026-08-13.** Published to PyPI as **`obolus`**
+(account `HVYM`); the import package is `obolus`. Release is tag-driven -
 `.github/workflows/release.yml` runs the tests on three OSes, checks the tag
 against `pyproject.toml`, then publishes. `server.json` registers it with the MCP
-Registry as `io.github.inviti8/obol`.
+Registry as `io.github.inviti8/obolus`.
 
 **The licence is still undecided and is the one thing blocking publication.** A
 public repo with no `LICENSE` is "all rights reserved" by default, which is worse

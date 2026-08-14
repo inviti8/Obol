@@ -15,8 +15,8 @@ import os
 
 import pytest
 
-from obol.errors import WalletError
-from obol.files import read_body, resolve_within, write_output
+from obolus.errors import WalletError
+from obolus.files import read_body, resolve_within, write_output
 
 
 # ---- disabled by default -------------------------------------------------

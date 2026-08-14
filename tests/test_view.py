@@ -8,7 +8,7 @@ properties that would silently break that.
 
 from __future__ import annotations
 
-from obol.view import ViewCard, render_page, write_page
+from obolus.view import ViewCard, render_page, write_page
 
 CARD = ViewCard(
     label="USDC",

@@ -16,8 +16,8 @@ from algosdk import encoding, transaction
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 
-from obol.keys import key_from_seed
-from obol.signer import SessionSigner
+from obolus.keys import key_from_seed
+from obolus.signer import SessionSigner
 
 
 def _params():

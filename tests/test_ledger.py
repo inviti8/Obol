@@ -12,8 +12,8 @@ import json
 
 import pytest
 
-from obol.errors import WalletError
-from obol.ledger import LEDGER_VERSION, Ledger, SessionRecord
+from obolus.errors import WalletError
+from obolus.ledger import LEDGER_VERSION, Ledger, SessionRecord
 
 
 def test_missing_ledger_starts_empty(tmp_path):

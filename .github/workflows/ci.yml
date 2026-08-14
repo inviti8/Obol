@@ -52,8 +52,8 @@ jobs:
           uv venv /tmp/fresh
           uv pip install --python /tmp/fresh $(ls dist/*.whl)
           uv run --python /tmp/fresh python -c "
-          from obol.funding import default_logo
-          from obol import __version__
+          from obolus.funding import default_logo
+          from obolus import __version__
           logo = default_logo()
           assert logo is not None, 'the Algorand mark is missing from the wheel'
           assert logo[:8].hex() == '89504e470d0a1a0a', 'the packaged mark is not a PNG'
