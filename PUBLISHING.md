@@ -20,8 +20,9 @@ tag.
 | `server.json` version vs PyPI | **aligned**, and `tests/test_packaging.py` now fails the build if they drift |
 | Launch command reaches a server | **fixed in 0.2.2** — see the next section |
 | GitHub repo `inviti8/Obolus` | **renamed**, matches `repository.url` |
-| Automated publish on tag | **in `release.yml`** |
-| MCP Registry entry | see "Verify" below |
+| Automated publish on tag | **in `release.yml`**, first used for v0.2.2 |
+| MCP Registry entry | **live** — `io.github.inviti8/obolus` 0.2.2, `status: active`, `isLatest: true` |
+| `uvx obolus mcp` against the published wheel | **handshakes**, warm and cold-install, reporting `obolus 0.2.2` and three tools |
 
 ## The thing that nearly shipped a dead listing
 
