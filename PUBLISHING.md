@@ -4,17 +4,43 @@ Brief for whoever runs the release. Needed on **every version bump**, not just t
 first one — the Registry stores metadata only, and that metadata carries a version
 that must match what is on PyPI.
 
+## READ THIS FIRST — there is a version mismatch right now
+
+Measured 2026-08-14:
+
+```
+pyproject.toml   0.2.1
+server.json      0.2.1   (both `version` and `packages[0].version`)
+PyPI obolus      0.2.0    <-- the only published release
+```
+
+**Publishing in this state fails no matter what, and the error will look like an
+auth problem.** The Registry resolves `packages[0].version` against PyPI to prove
+the package exists and is yours; 0.2.1 is not there.
+
+Pick one before doing anything else:
+
+- **Release 0.2.1 to PyPI** (`uv build && uv publish`), then publish to the
+  Registry. Preferred if 0.2.1 contains real changes.
+- **Or set both version fields in `server.json` back to `0.2.0`** and register the
+  release that actually exists. `pyproject.toml` can stay at 0.2.1 as the
+  in-progress version.
+
+Then re-check with the command in [Gotchas](#gotchas-that-fail-the-submission).
+
 ## State as of 2026-08-14
 
 | Thing | Status |
 |---|---|
 | PyPI `obolus` 0.2.0 | **live** |
 | `mcp-name: io.github.inviti8/obolus` in the published PyPI description | **present** — this is the ownership proof |
-| `server.json` — name, title, version 0.2.0, package identifier `obolus` | **valid** against the 2025-12-11 schema |
+| `server.json` schema validity, name, title, package identifier `obolus` | **valid** against the 2025-12-11 schema |
+| `server.json` version vs PyPI | **MISMATCHED** — see above |
 | GitHub repo `inviti8/Obolus` | **renamed**, matches `repository.url` |
 | MCP Registry entry | **MISSING** — this document exists to fix that |
 
-Everything except the Registry entry is done. Do not re-do them.
+Everything except the version mismatch and the Registry entry is done. Do not
+re-do them.
 
 ## The goal
 
@@ -86,8 +112,12 @@ work: `?search=obol` returns the unrelated `dev.fly.obol-x402/obol`.
 ## Gotchas that fail the submission
 
 - **Version drift.** `server.json` `version` *and* `packages[0].version` must both
-  equal the version live on PyPI. All three are `0.2.0` right now. Bump all of
-  them together or the Registry rejects the package as unverifiable.
+  equal a version that is live on PyPI. This is currently broken — see the top of
+  this file. Check before every publish:
+
+  ```bash
+  python -c "import json,urllib.request;s=json.load(open('server.json'));p=json.load(urllib.request.urlopen('https://pypi.org/pypi/obolus/json'));print('server.json',s['version'],s['packages'][0]['version'],'| pypi',p['info']['version'])"
+  ```
 - **The ownership marker lives on PyPI, not in the repo.** The Registry fetches
   the package description from PyPI and looks for `mcp-name: io.github.inviti8/obolus`.
   Editing `README.md` locally changes nothing until a release is published to
