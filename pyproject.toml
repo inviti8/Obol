@@ -1,6 +1,6 @@
 [project]
 name = "obolus"
-version = "0.2.0"
+version = "0.2.1"
 description = "An MCP server that gives an AI agent a disposable Algorand wallet, so it can pay for x402 resources"
 readme = "README.md"
 license = "Apache-2.0"
