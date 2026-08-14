@@ -66,5 +66,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          # Not `dist/*`. `uv build` drops a `.gitignore` containing `*` in there
+          # so the directory ignores itself, the glob matched it, and GitHub -
+          # which will not take an asset whose name starts with a dot - renamed
+          # it to `default.gitignore` and attached it to v0.2.0.
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
           generate_release_notes: true
