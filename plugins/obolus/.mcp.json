@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "obolus": {
+      "command": "uvx",
+      "args": ["obolus", "mcp"],
+      "env": {
+        "OBOLUS_NETWORK": "testnet"
+      }
+    }
+  }
+}

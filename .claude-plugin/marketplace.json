@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "heavymeta",
+  "description": "Plugins from the HEAVYMETA estate. Obolus is the first.",
+  "owner": {
+    "name": "HEAVYMETA",
+    "url": "https://github.com/inviti8"
+  },
+  "plugins": [
+    {
+      "name": "obolus",
+      "displayName": "Obolus",
+      "source": "./plugins/obolus",
+      "description": "A disposable Algorand wallet for an agent, so it can pay x402 resources in USDC without a human provisioning anything. Starts on testnet.",
+      "category": "payments",
+      "keywords": ["x402", "algorand", "usdc", "wallet", "payments", "agentic-payments"],
+      "author": {
+        "name": "HEAVYMETA",
+        "url": "https://github.com/inviti8"
+      },
+      "homepage": "https://github.com/inviti8/Obolus",
+      "repository": "https://github.com/inviti8/Obolus",
+      "license": "Apache-2.0"
+    }
+  ]
+}

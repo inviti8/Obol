@@ -64,3 +64,22 @@ jobs:
           assert logo[:8].hex() == '89504e470d0a1a0a', 'the packaged mark is not a PNG'
           print('wheel ok', __version__, len(logo), 'byte logo')
           "
+
+  plugin:
+    # The Claude Code plugin manifests, checked by the same validator the
+    # community-marketplace review pipeline runs. Its own job because it needs
+    # Claude Code rather than the Python toolchain, and one OS is enough - these
+    # are JSON documents, not code.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate the plugin and the marketplace
+        # --strict, so unrecognized fields and missing metadata fail here rather
+        # than being tolerated at runtime and rejected at submission.
+        run: |
+          claude plugin validate ./plugins/obolus --strict
+          claude plugin validate . --strict

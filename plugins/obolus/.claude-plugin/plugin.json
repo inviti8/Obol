@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "obolus",
+  "displayName": "Obolus",
+  "version": "0.2.2",
+  "description": "A disposable Algorand wallet for an agent, so it can pay x402 resources in USDC without a human provisioning anything. Starts on testnet; mainnet is guarded, never disabled.",
+  "author": {
+    "name": "HEAVYMETA",
+    "url": "https://github.com/inviti8"
+  },
+  "homepage": "https://github.com/inviti8/Obolus",
+  "repository": "https://github.com/inviti8/Obolus",
+  "license": "Apache-2.0",
+  "keywords": ["x402", "algorand", "usdc", "wallet", "payments", "agentic-payments", "mcp"]
+}

@@ -1,4 +1,39 @@
-# Publishing Obolus to the MCP Registry
+# Publishing Obolus
+
+Two channels, and they are independent. This file is mostly about the first.
+
+| Channel | Where | Status |
+|---|---|---|
+| **MCP Registry** | `io.github.inviti8/obolus` | live, automated on tag — the rest of this file |
+| **Claude Code plugin** | `.claude-plugin/marketplace.json` in this repo | self-hosted and live; not yet submitted to the community catalog |
+
+## The plugin channel, briefly
+
+Self-hosted needs no review and no gatekeeper — users run:
+
+```
+/plugin marketplace add inviti8/Obolus
+/plugin install obolus@heavymeta
+```
+
+Manifests are validated in CI by the `plugin` job with `claude plugin validate
+--strict`, the same checker the community review pipeline runs.
+
+**Submitting to the community catalog** (`anthropics/claude-plugins-community`,
+~2,300 plugins) is a separate, deliberate step and has not been taken. Individual
+authors use the Console form at <https://platform.claude.com/plugins/submit>; the
+claude.ai form needs a Team or Enterprise org. Approved plugins get pinned to a
+commit SHA with CI bumping the pin. Run `claude plugin validate ./plugins/obolus
+--strict` before submitting — the pipeline runs the same check.
+
+**The version lives in `plugin.json` only.** Claude Code takes that value and
+ignores the marketplace entry's copy *without warning*, so a second copy is a
+silent trap rather than a redundancy. `tests/test_packaging.py` asserts both that
+the plugin version matches the package and that the marketplace entry has none.
+
+---
+
+# The MCP Registry
 
 Brief for whoever runs the release. Needed on **every version bump**, not just the
 first one — the Registry stores metadata only, and that metadata carries a version

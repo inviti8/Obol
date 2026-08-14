@@ -33,21 +33,36 @@ spends.
 
 ## Install
 
+### Claude Code — the plugin
+
+```
+/plugin marketplace add inviti8/Obolus
+/plugin install obolus@heavymeta
+```
+
+Wires up the MCP server and adds `/obolus:fund-wallet`, which knows the bootstrap
+order and why it cannot be rearranged. Nothing to install first beyond
+[uv](https://docs.astral.sh/uv/) — the server is launched with `uvx obolus mcp`.
+
+### Everything else
+
 ```bash
 uv tool install obolus
 ```
 
-`uv tool install` rather than `uvx`: `uvx` re-resolves dependencies on every
-invocation, which is the wrong trade for something an agent calls constantly.
-`pipx install obolus` works too.
+`uv tool install` rather than `uvx` **for the CLI**: uvx re-resolves on every
+invocation, measured at 200–400 ms over an installed console script. That is
+nothing once per session, which is all the MCP server costs — it is why the
+plugin above uses `uvx` — but it is the wrong trade for a command called in a
+loop. `pipx install obolus` works too.
 
-### Add it to Claude Code
+#### Add it to Claude Code by hand
 
 ```bash
 claude mcp add obolus -e OBOLUS_NETWORK=testnet -- obolus-mcp
 ```
 
-### Add it to any other MCP client
+#### Add it to any other MCP client
 
 ```json
 {

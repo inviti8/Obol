@@ -24,6 +24,8 @@ from obolus import __version__
 ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = ROOT / "pyproject.toml"
 SERVER_JSON = ROOT / "server.json"
+PLUGIN_JSON = ROOT / "plugins" / "obolus" / ".claude-plugin" / "plugin.json"
+MARKETPLACE_JSON = ROOT / ".claude-plugin" / "marketplace.json"
 
 needs_source_tree = pytest.mark.skipif(
     not PYPROJECT.exists(), reason="not a source checkout"
@@ -48,6 +50,57 @@ def test_server_json_matches_pyproject():
     assert pkg["identifier"] == tomllib.loads(
         PYPROJECT.read_text(encoding="utf-8")
     )["project"]["name"]
+
+
+@needs_source_tree
+def test_claude_plugin_matches_pyproject():
+    """The fourth home for the version, and the one with a silent failure mode.
+
+    Claude Code takes `version` from `plugin.json` and ignores the marketplace
+    entry's copy without warning, so a second copy is a trap rather than a
+    redundancy - this asserts there is exactly one. The plugin tracks the package
+    version because it launches that package; a plugin claiming 0.2.2 while
+    fetching something else is a support conversation nobody can win.
+    """
+    plugin = json.loads(PLUGIN_JSON.read_text(encoding="utf-8"))
+    assert plugin["version"] == __version__
+
+    market = json.loads(MARKETPLACE_JSON.read_text(encoding="utf-8"))
+    entry = next(p for p in market["plugins"] if p["name"] == plugin["name"])
+    assert "version" not in entry, "set version in plugin.json only; the entry's copy is ignored"
+
+
+@needs_source_tree
+def test_plugin_launches_the_published_package():
+    """The plugin's MCP command must be one the CLI actually answers.
+
+    Same failure as the Registry entry: `uvx obolus` alone reaches the CLI, which
+    exits with a usage error rather than speaking MCP. The plugin has to pass the
+    subcommand too, and it has to be a real one.
+    """
+    from obolus.cli import build_parser
+
+    mcp_json = json.loads((PLUGIN_JSON.parent.parent / ".mcp.json").read_text(encoding="utf-8"))
+    server = mcp_json["mcpServers"]["obolus"]
+    assert server["command"] == "uvx"
+
+    pkg = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]["name"]
+    assert server["args"][0] == pkg
+
+    subparsers = next(
+        a.choices for a in build_parser()._actions  # noqa: SLF001
+        if isinstance(a, argparse._SubParsersAction)  # noqa: SLF001
+    )
+    assert server["args"][1] in subparsers
+
+    # Testnet is the default in config.py, but the plugin states it anyway: a
+    # one-command install of a wallet should make its safe setting visible to
+    # anyone reading the file, not leave it implied.
+    assert server["env"]["OBOLUS_NETWORK"] == "testnet"
+
+    # The seed must not live in the plugin directory - plugin dirs are replaced
+    # on update and the seed is the only way back to money already on chain.
+    assert "OBOLUS_DATA_DIR" not in server.get("env", {})
 
 
 @needs_source_tree
