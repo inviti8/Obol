@@ -30,6 +30,11 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          # Without this the matrix is decorative. `uv sync` picks whatever
+          # interpreter the runner happens to ship, so all six jobs tested the
+          # same version - 3.12 on Linux and Windows, 3.14 on macOS - and 3.11,
+          # the floor declared in requires-python, was never exercised at all.
+          python-version: ${{ matrix.python }}
 
       - name: Install
         run: uv sync --frozen --all-extras --dev

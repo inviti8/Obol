@@ -1,6 +1,6 @@
 [project]
 name = "obolus"
-version = "0.1.0"
+version = "0.2.0"
 description = "An MCP server that gives an AI agent a disposable Algorand wallet, so it can pay for x402 resources"
 readme = "README.md"
 license = "Apache-2.0"
@@ -26,7 +26,7 @@ dependencies = [
     # bump re-opens all of them.
     #
     # Client-side extras only. Authen also pulls [flask,extensions] because it is the
-    # server; Obol never serves a 402, it only answers them.
+    # server; Obolus never serves a 402, it only answers them.
     "x402-avm[avm,httpx]==2.0.2",
     "httpx>=0.27",
     "pynacl>=1.6.2",
@@ -66,4 +66,4 @@ packages = ["obolus"]
 
 # The brand asset the QR renderer composites must ship with the wheel; without
 # this the styled code silently loses its logo on an installed copy.
-artifacts = ["obol/assets/*.png"]
+artifacts = ["obolus/assets/*.png"]

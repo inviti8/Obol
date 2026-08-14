@@ -70,14 +70,14 @@ payments — but it is never what you get by forgetting to choose.
 A new vault holds nothing, and the order is forced by the chain:
 
 ```bash
-obol vault          # says which of the three steps you are on
-obol vault qr       # scannable codes for the two things you can send
+obolus vault          # says which of the three steps you are on
+obolus vault qr       # scannable codes for the two things you can send
 ```
 
 | # | Step | Who |
 |---|---|---|
 | 1 | Send ≥ 0.21 ALGO to the vault | you |
-| 2 | Opt the vault into USDC (`obol vault optin`) | Obolus |
+| 2 | Opt the vault into USDC (`obolus vault optin`) | Obolus |
 | 3 | Send USDC | you |
 
 **Step 3 before step 2 fails.** An Algorand account cannot receive an asset it

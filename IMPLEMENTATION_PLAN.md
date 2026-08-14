@@ -50,7 +50,7 @@ variance — and not the reason to choose it.
 
 **Consequences for the build, all of them narrowing:**
 
-- `obol/x402.py` exposes `async def fetch(...)` and does the payload build in
+- `obolus/x402.py` exposes `async def fetch(...)` and does the payload build in
   `asyncio.to_thread`. The blocking work is quarantined in one function.
 - **`BuyerSigner` stays synchronous.** The scheme calls `sign_transactions`
   directly, never through an await, so the port from `pay_once.py` needs no async
@@ -144,7 +144,7 @@ Two consequences, both load-bearing:
 ## 1. Module layout
 
 ```
-obol/
+obolus/
   config.py        settings, network profiles, caps, data dir
   keys.py          vault keypair, OS keychain, address encodings
   algorand.py      algod client, account state, group builders
@@ -169,7 +169,7 @@ loop, and it stays useful for support and debugging afterwards.
 `uv` project, `requires-python >= 3.11` (tomllib in the stdlib; local toolchain
 is 3.13). Pin `x402-avm[avm,httpx]==2.0.2` — the same version the Authen work was
 verified against, and the version every claim in `CLAUDE.md` was measured on.
-Console script `obol`, so the CLI and the MCP entry point ship together.
+Console script `obolus`, so the CLI and the MCP entry point ship together.
 
 Closed source for now (decision 5): no `LICENSE`, no badges, no publish workflow.
 
@@ -189,11 +189,11 @@ stand-in ASA above. Each profile carries `caip2`, `slug`, `payment_asa`,
 
 | From `D:/repos/Authen` | Into | Notes |
 |---|---|---|
-| `tools/pay_once.py` → `BuyerSigner` | `obol/signer.py` | Near-direct port. Signs only requested group indexes; the fee-payer txn belongs to the facilitator. |
-| `tools/pay_once.py` → the 402 flow | `obol/x402.py` | Challenge decode, `create_payment_payload`, **`PAYMENT-SIGNATURE`** header, receipt decode. Note it reads the receipt from `PAYMENT-RESPONSE` *or* `X-PAYMENT-RESPONSE`; keep both. |
-| `tools/algo.py` | `obol/algorand.py` | `account_info`, `asset_holding`, formatting, ALGOD urls. `asset_holding` returning `None` means *not opted in*, which is the failure that matters. |
-| `authen/keys.py` | `obol/keys.py` | Ed25519 identity, Stellar/Algorand address encoding, **atomic write with `O_BINARY`** — see the bug note below. |
-| `tools/pay_mainnet.py` | `obol/cli.py`, `obol/caps.py` | The preflight/guard pattern: check everything before spending, refuse without explicit confirmation. Its five safety rails are the spec for §3 Phase 3. |
+| `tools/pay_once.py` → `BuyerSigner` | `obolus/signer.py` | Near-direct port. Signs only requested group indexes; the fee-payer txn belongs to the facilitator. |
+| `tools/pay_once.py` → the 402 flow | `obolus/x402.py` | Challenge decode, `create_payment_payload`, **`PAYMENT-SIGNATURE`** header, receipt decode. Note it reads the receipt from `PAYMENT-RESPONSE` *or* `X-PAYMENT-RESPONSE`; keep both. |
+| `tools/algo.py` | `obolus/algorand.py` | `account_info`, `asset_holding`, formatting, ALGOD urls. `asset_holding` returning `None` means *not opted in*, which is the failure that matters. |
+| `authen/keys.py` | `obolus/keys.py` | Ed25519 identity, Stellar/Algorand address encoding, **atomic write with `O_BINARY`** — see the bug note below. |
+| `tools/pay_mainnet.py` | `obolus/cli.py`, `obolus/caps.py` | The preflight/guard pattern: check everything before spending, refuse without explicit confirmation. Its five safety rails are the spec for §3 Phase 3. |
 
 **Port `pay_mainnet.py`'s rails, not just its shape.** They are the difference
 between a wallet and a footgun, and one of them is not in `DESIGN.md` at all:
@@ -313,7 +313,7 @@ does it — there is no deployed Authen testnet host. Two conditions, both from
 catalogued permanently against that merchant id. That is the price of a testnet
 run and it is why this must never be done with the mainnet config loaded.
 
-**Done when:** `obol fetch http://127.0.0.1:8402/api/v1/notarize` pays from a
+**Done when:** `obolus fetch http://127.0.0.1:8402/api/v1/notarize` pays from a
 session account and returns a signed attestation with the receipt printed, and
 the attestation verifies offline against `/api/v1/identity`.
 
@@ -361,7 +361,7 @@ hit. Unit-testable without network.
 
 ### Phase 4 — MCP server — **DONE 2026-08-12**
 
-`obol/mcp/{server,tools,wallet}.py` plus an `obolus-mcp` entry point. Driven by a
+`obolus/mcp/{server,tools,wallet}.py` plus an `obolus-mcp` entry point. Driven by a
 real MCP client over a real stdio transport (`probes/mcp_client.py`, SDK `mcp`
 2.0.0, protocol `2026-07-28`): tools listed, `wallet_status` and
 `wallet_funding_info` answered, a cap refusal returned without spending, and
@@ -443,7 +443,7 @@ a real merchant, with money it was given once and provisioned none of.
 - Switch the profile to mainnet; target `https://authen.hvym.link/api/v1/notarize`
 - Fund the vault with a few dollars of real USDC — vault bootstrap for real, and
   the first honest test of how much friction §3.1 actually leaves
-- `obol` preflight must pass every rail before anything is signed
+- `obolus` preflight must pass every rail before anything is signed
 - Open a session, pay $0.05, close the session, reconcile
 
 **Done when:** a settled mainnet txid, an attestation that verifies offline, and

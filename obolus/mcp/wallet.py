@@ -228,7 +228,7 @@ class Wallet:
                 "step": 2,
                 "done": st.opted_in,
                 "who": "obolus",
-                "action": f"Opt the vault into ASA {asset_id} (`obol vault optin`).",
+                "action": f"Opt the vault into ASA {asset_id} (`obolus vault optin`).",
                 "why": (
                     "Until this is done, USDC sent to the vault is REJECTED outright "
                     "- it does not sit pending, it fails."
@@ -255,7 +255,7 @@ class Wallet:
             "steps": [
                 s
                 for s in steps
-                # Step 2 is Obol's own opt-in and is a precondition for the asset
+                # Step 2 is Obolus's own opt-in and is a precondition for the asset
                 # transfer, so it stays whenever the asset side is in scope.
                 if asset is None
                 or (s["step"] == 1 and "algo" in wanted)
@@ -277,7 +277,7 @@ class Wallet:
                 "`scan` values are ARC-26 URIs a wallet can scan. They carry the "
                 "address and the asset id but deliberately NO amount - the human "
                 "types that into their own wallet, where they see it before "
-                "confirming. Run `obol vault qr` for the same thing as a QR code "
+                "confirming. Run `obolus vault qr` for the same thing as a QR code "
                 "in a terminal."
             ),
         }
@@ -285,7 +285,7 @@ class Wallet:
             written = []
             for target in targets:
                 name = target.theme.key
-                rel = f"{qr_dir.rstrip('/')}/obol-fund-{self.cfg.network.name}-{name}.png"
+                rel = f"{qr_dir.rstrip('/')}/obolus-fund-{self.cfg.network.name}-{name}.png"
                 path = await asyncio.to_thread(
                     write_output,
                     self.cfg.file_root,

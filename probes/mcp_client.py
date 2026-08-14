@@ -1,11 +1,11 @@
-"""Drive the Obol MCP server as a real client, over a real stdio transport.
+"""Drive the Obolus MCP server as a real client, over a real stdio transport.
 
     uv run python probes/mcp_client.py
 
 Phase 4's done-condition is "an agent completes a paid notarization without the
 human touching a key". This is that, minus the model: a genuine MCP client
 spawns `obolus-mcp` as a subprocess, negotiates the protocol, lists the tools, and
-calls them. Nothing here reaches into `obol` internals - if a tool is misdeclared
+calls them. Nothing here reaches into `obolus` internals - if a tool is misdeclared
 or a return value will not serialise, this fails exactly where a real client
 would.
 
@@ -106,7 +106,7 @@ async def main() -> int:
                 {
                     "url": NOTARIZE,
                     "method": "POST",
-                    "body": "Obol Phase 4: an agent paid for this over MCP",
+                    "body": "Obolus Phase 4: an agent paid for this over MCP",
                 },
             )
         )

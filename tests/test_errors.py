@@ -13,7 +13,7 @@ import pytest
 
 from obolus.errors import (
     CapExceeded,
-    ObolError,
+    ObolusError,
     PaymentRefused,
     PaymentRejected,
     WalletError,
@@ -23,7 +23,7 @@ from obolus.errors import (
 @pytest.mark.parametrize(
     "exc",
     [
-        ObolError("x"),
+        ObolusError("x"),
         WalletError("x"),
         PaymentRefused("x"),
         PaymentRejected("x"),
@@ -66,4 +66,4 @@ def test_cap_exceeded_carries_its_limit():
 def test_rejected_is_not_a_refusal():
     """We signed and sent - the money may have moved. Never a safe blind retry."""
     assert not issubclass(PaymentRejected, PaymentRefused)
-    assert issubclass(PaymentRejected, ObolError)
+    assert issubclass(PaymentRejected, ObolusError)

@@ -1,4 +1,4 @@
-"""Fund an Obol dev vault from the Authen testnet buyer account.
+"""Fund an Obolus dev vault from the Authen testnet buyer account.
 
     uv run python probes/fund_dev_vault.py --algo 0.5
     uv run python probes/fund_dev_vault.py --asset 2.0
@@ -63,7 +63,7 @@ def main() -> int:
         if not state.opted_in:
             raise SystemExit(
                 f"Vault is not opted into ASA {asa}; this transfer would be "
-                "rejected outright. Run `obol vault optin` first — that is step 2."
+                "rejected outright. Run `obolus vault optin` first — that is step 2."
             )
         txns.append(
             transaction.AssetTransferTxn(

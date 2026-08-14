@@ -79,7 +79,7 @@ def blocks_are_printable(stream=None) -> bool:
 
     On a stock Windows console the answer is no - cp1252 has no U+2588, and
     printing one raises UnicodeEncodeError rather than degrading. That crashed
-    `obol vault qr` outright, which is a poor outcome for a convenience feature.
+    `obolus vault qr` outright, which is a poor outcome for a convenience feature.
     """
     import sys
 
@@ -268,7 +268,7 @@ def default_logo() -> bytes | None:
     """The Algorand mark shipped inside the package.
 
     Read through `importlib.resources` rather than a path relative to this file,
-    so it still resolves when Obol is installed as a wheel or a zipapp rather
+    so it still resolves when Obolus is installed as a wheel or a zipapp rather
     than run from a checkout.
     """
     from importlib import resources
@@ -347,7 +347,7 @@ def funding_targets(
     between them is forced (section 3.1). A single QR cannot express "this one
     first, then that one".
     """
-    label = f"Obol vault ({network})"
+    label = f"Obolus vault ({network})"
     return [
         FundingTarget(
             what="ALGO",
@@ -355,7 +355,7 @@ def funding_targets(
                 "Send this FIRST. Without it the vault cannot pay the fee for its "
                 "own asset opt-in, and 0.1 is locked as the asset slot minimum."
             ),
-            uri=arc26_uri(address, label=label, note="Obol vault funding: ALGO"),
+            uri=arc26_uri(address, label=label, note="Obolus vault funding: ALGO"),
             suggested=f"{algo_needed_micro / 1e6:.2f} ALGO",
             theme=THEME_ALGO,
         ),
@@ -369,7 +369,7 @@ def funding_targets(
                 address,
                 asset=payment_asa,
                 label=label,
-                note=f"Obol vault funding: ASA {payment_asa}",
+                note=f"Obolus vault funding: ASA {payment_asa}",
             ),
             suggested=None,
             theme=theme_for(asset_label),

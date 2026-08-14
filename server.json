@@ -7,12 +7,12 @@
     "url": "https://github.com/inviti8/Obolus",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "obolus",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       },

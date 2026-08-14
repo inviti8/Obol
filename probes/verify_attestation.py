@@ -1,4 +1,4 @@
-"""Buy an attestation through Obol, then verify it with nothing but its bytes.
+"""Buy an attestation through Obolus, then verify it with nothing but its bytes.
 
     uv run python probes/verify_attestation.py
 
@@ -14,9 +14,9 @@ posted, rebuilds the canonical payload, and checks an Ed25519 signature against
 the key from `/api/v1/identity`. The only thing fetched from the node is a public
 key that could equally have come from anywhere.
 
-Note what stays out of `obol/`: nothing in this file is importable from the
+Note what stays out of `obolus/`: nothing in this file is importable from the
 wallet. Authen is reached through `fetch` like any other resource, and the moment
-Obol grows first-class Authen verbs it stops being a wallet (DESIGN.md section 7).
+Obolus grows first-class Authen verbs it stops being a wallet (DESIGN.md section 7).
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ from obolus.x402 import fetch  # noqa: E402
 
 BASE = "http://127.0.0.1:8402"
 NOTARIZE = f"{BASE}/api/v1/notarize"
-BODY = b"Obol Phase 2 - offline verification probe"
+BODY = b"Obolus Phase 2 - offline verification probe"
 
 
 def b64url_decode(text: str) -> bytes:

@@ -20,7 +20,7 @@ Two windows, and they fail differently:
              is finished. The reaper must find it from the index alone and recover
              every microunit.
 
-After either, run `obol reap` and reconcile.
+After either, run `obolus reap` and reconcile.
 """
 
 from __future__ import annotations

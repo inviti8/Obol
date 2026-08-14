@@ -1,10 +1,10 @@
 """Serve the Authen node on loopback, for probes to pay against.
 
-RUN THIS WITH AUTHEN'S INTERPRETER, not Obol's:
+RUN THIS WITH AUTHEN'S INTERPRETER, not Obolus's:
 
     D:/repos/Authen/.venv/Scripts/python.exe probes/_authen_node.py
 
-Obol's venv deliberately carries client-side x402 extras only — it never serves a
+Obolus's venv deliberately carries client-side x402 extras only — it never serves a
 402 — so it cannot import flask or the Authen package. Keeping the two processes
 in separate interpreters is the point: the probe then exercises a real HTTP
 merchant rather than an in-process fixture, which is what `x402_fetch` will face.

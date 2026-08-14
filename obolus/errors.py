@@ -15,11 +15,11 @@ something it did not get.
 from __future__ import annotations
 
 
-class ObolError(Exception):
+class ObolusError(Exception):
     """Base for everything this package raises deliberately."""
 
 
-class WalletError(ObolError):
+class WalletError(ObolusError):
     """The wallet cannot do what was asked: not funded, not opted in, no session.
 
     Deliberately NOT SystemExit, which is what this started as. SystemExit reads
@@ -33,7 +33,7 @@ class WalletError(ObolError):
     """
 
 
-class PaymentRefused(ObolError):
+class PaymentRefused(ObolusError):
     """We declined before signing. Nothing moved.
 
     Every refusal names what it objected to. A wallet that says only "refused"
@@ -54,7 +54,7 @@ class CapExceeded(PaymentRefused):
         self.limit = limit
 
 
-class PaymentRejected(ObolError):
+class PaymentRejected(ObolusError):
     """We signed and sent, and the resource was not served.
 
     Deliberately not a subclass of PaymentRefused: the money may have moved.

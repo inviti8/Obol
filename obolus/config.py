@@ -8,7 +8,7 @@ and the Authen build spent a while on a self-minted stand-in when the faucet
 would not pay out. Hardcoding an id means opting a session into the wrong asset
 and failing every payment on the rail you are actually developing against.
 
-**Testnet is the default.** Mainnet is never disabled - Obol is meant to make a
+**Testnet is the default.** Mainnet is never disabled - Obolus is meant to make a
 real payment - but it is never the thing you get by forgetting to choose.
 """
 
@@ -120,7 +120,7 @@ class Config:
     data_dir: Path
     caps: Caps
     # The one directory `body_file` may read from and `output_file` may write to.
-    # None - the default - disables both parameters outright. See obol/files.py:
+    # None - the default - disables both parameters outright. See obolus/files.py:
     # moving bytes off the machine is not something a spend cap can bound, so a
     # default install does not offer the capability at all.
     file_root: Path | None = None

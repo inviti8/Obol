@@ -35,7 +35,7 @@ from .wallet import Wallet
 log = logging.getLogger("obolus.mcp")
 
 INSTRUCTIONS = """\
-Obol is a disposable Algorand wallet for paying x402 resources.
+Obolus is a disposable Algorand wallet for paying x402 resources.
 
 Use `x402_fetch` for any URL that might require payment - it returns the body
 whether or not payment was needed. Check `wallet_status` if a payment fails or
@@ -65,7 +65,7 @@ def build_server(cfg: Config) -> MCPServer:
 
     server = MCPServer(
         name="obolus",
-        title="Obol - x402 wallet",
+        title="Obolus - x402 wallet",
         version="0.1.0",
         instructions=INSTRUCTIONS,
         lifespan=lifespan,
@@ -84,7 +84,7 @@ def main() -> int:
     if cfg.network.is_mainnet:
         log.warning("MAINNET - x402_fetch will spend real money")
     log.info(
-        "obol mcp: network=%s asset=%s data=%s",
+        "obolus mcp: network=%s asset=%s data=%s",
         cfg.network.name,
         cfg.network.payment_asa,
         cfg.data_dir,

@@ -7,7 +7,7 @@ be in the text. DESIGN.md section 7 is explicit that this is where honesty lives
 a wallet that oversells what a receipt means is worse than one that says nothing.
 
 No `authen_notarize`. Authen is reached through `x402_fetch` like any other
-resource - the moment Obol grows first-class verbs for one merchant it stops
+resource - the moment Obolus grows first-class verbs for one merchant it stops
 being a wallet and becomes that merchant's SDK.
 """
 
@@ -98,11 +98,11 @@ The usual flow: `wallet_status` answers "how much do I have", then
 SET `open_in_browser` WHENEVER A HUMAN WANTS TO SCAN THE CODE. The image block
 this returns renders in some MCP clients and not in a terminal, so on its own it
 can reach the model and never reach the person holding the phone. With the flag,
-Obol writes a self-contained page and opens it in the default browser - no server
+Obolus writes a self-contained page and opens it in the default browser - no server
 and no network needed.
 
 `qr_dir` optionally writes the codes as PNG files into that directory, under the
-same configured file root as body_file/output_file. `obol vault qr` prints them
+same configured file root as body_file/output_file. `obolus vault qr` prints them
 straight into a terminal."""
 
 

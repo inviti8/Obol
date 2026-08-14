@@ -41,7 +41,7 @@ class ViewCard:
 _PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Obol - fund {network}</title>
+<title>Obolus - fund {network}</title>
 <style>
   :root {{ color-scheme: dark; }}
   body {{ margin:0; padding:2rem 1rem 3rem; background:#0d0f12; color:#e8eaed;
@@ -70,7 +70,7 @@ _PAGE = """<!doctype html>
   .note b {{ color:#e8eaed; }}
 </style>
 <main>
-  <h1>Fund the Obol vault<span class="net {netclass}">{network}</span></h1>
+  <h1>Fund the Obolus vault<span class="net {netclass}">{network}</span></h1>
   <p class="sub">Scan with an Algorand wallet. Balances at time of writing: {balances}</p>
   <div class="cards">{cards}</div>
   <p class="note"><b>No amount is encoded in any code here.</b> Each one carries the
@@ -126,7 +126,7 @@ def write_page(page: str, *, network: str, tag: str) -> Path:
     Stable rather than unique so repeated top-ups do not litter the temp
     directory with one file per question asked.
     """
-    path = Path(tempfile.gettempdir()) / f"obol-funding-{network}-{tag}.html"
+    path = Path(tempfile.gettempdir()) / f"obolus-funding-{network}-{tag}.html"
     path.write_text(page, encoding="utf-8")
     return path
 

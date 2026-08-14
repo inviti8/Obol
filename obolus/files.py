@@ -32,7 +32,7 @@ def resolve_within(root: Path | None, candidate: str, *, purpose: str) -> Path:
     if root is None:
         raise WalletError(
             f"{purpose} is disabled: no file root is configured. Set "
-            "`[files] root` in config.toml to the directory Obol may read from "
+            "`[files] root` in config.toml to the directory Obolus may read from "
             "and write to. It is off by default because it lets an agent move "
             "bytes off this machine, which no spend cap can bound."
         )

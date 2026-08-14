@@ -115,9 +115,9 @@ def test_negative_asset_refuses():
 
 
 def test_label_and_note_are_percent_encoded():
-    uri = arc26_uri(ADDR, label="Obol vault (testnet)", note="a&b=c d")
+    uri = arc26_uri(ADDR, label="Obolus vault (testnet)", note="a&b=c d")
     assert " " not in uri, "a raw space would truncate the URI in some scanners"
-    assert q(uri)["label"] == ["Obol vault (testnet)"]
+    assert q(uri)["label"] == ["Obolus vault (testnet)"]
     assert q(uri)["note"] == ["a&b=c d"], "ampersand must not split the query"
 
 
@@ -197,7 +197,7 @@ def test_unknown_encoding_falls_back_rather_than_raising():
 
 
 def test_ascii_fallback_survives_cp1252():
-    """The regression: `obol vault qr` died with UnicodeEncodeError on Windows."""
+    """The regression: `obolus vault qr` died with UnicodeEncodeError on Windows."""
     out = qr_terminal(arc26_uri(ADDR), compact=False)
     out.encode("cp1252")  # must not raise
     assert out.isascii()

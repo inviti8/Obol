@@ -4,12 +4,12 @@ Not a throwaway. It keeps the wallet testable without MCP, and it stays useful f
 support afterwards: when someone's agent cannot pay, this is what tells them
 whether the vault is on bootstrap step 1 or the session never closed.
 
-    obol vault                     where the vault is, and what to do next
-    obol vault optin               step 2 of the bootstrap
-    obol session open --balance 1  open a funded session
-    obol session close             close it and sweep back
-    obol sessions                  what the ledger believes
-    obol reap                      sweep anything a crash left behind
+    obolus vault                     where the vault is, and what to do next
+    obolus vault optin               step 2 of the bootstrap
+    obolus session open --balance 1  open a funded session
+    obolus session close             close it and sweep back
+    obolus sessions                  what the ledger believes
+    obolus reap                      sweep anything a crash left behind
 
 Every command takes `--network`, defaulting to testnet.
 """
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 from .config import PROFILES, VAULT_MIN_ALGO_MICRO, Config, load_config
-from .errors import ObolError
+from .errors import ObolusError
 from .ledger import Ledger
 from .session import (
     close_session,
@@ -238,7 +238,7 @@ def cmd_vault_qr(cfg: Config, args) -> int:
             out = Path(args.write)
             out.mkdir(parents=True, exist_ok=True)
             name = target.theme.key
-            path = out / f"obol-fund-{cfg.network.name}-{name}.png"
+            path = out / f"obolus-fund-{cfg.network.name}-{name}.png"
             path.write_bytes(
                 qr_styled_png(
                     target.uri,
@@ -302,7 +302,14 @@ def cmd_address(cfg: Config, args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="obolus", description=__doc__)
+    # Raw, because the module docstring above is a command table. argparse's
+    # default formatter reflows it into one paragraph, which turns the only
+    # summary of the six verbs into an unreadable run-on.
+    ap = argparse.ArgumentParser(
+        prog="obolus",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     ap.add_argument(
         "--network",
         choices=sorted(PROFILES),
@@ -365,7 +372,7 @@ def main() -> int:
         print("*** MAINNET - real money ***\n", file=sys.stderr)
     try:
         return args.fn(cfg, args)
-    except ObolError as exc:
+    except ObolusError as exc:
         # The library raises these instead of SystemExit so a server can survive
         # them; the CLI is where they become an exit code.
         print(str(exc), file=sys.stderr)

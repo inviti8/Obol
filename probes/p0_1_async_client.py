@@ -68,7 +68,7 @@ class BuyerSigner:
 
     Note it stays SYNCHRONOUS even under the async client: the AVM scheme calls
     `sign_transactions` directly, not through an await. That is load-bearing for
-    `obol/signer.py`, which therefore needs no async variant.
+    `obolus/signer.py`, which therefore needs no async variant.
     """
 
     def __init__(self, sk: str, addr: str) -> None:
@@ -250,7 +250,7 @@ async def run_variant(name: str, coro_fn, signer: BuyerSigner) -> dict:
     task = asyncio.create_task(hb.run())
     t0 = time.perf_counter()
     try:
-        result = await coro_fn(signer, f"obol P0.1 probe: {name}".encode())
+        result = await coro_fn(signer, f"obolus P0.1 probe: {name}".encode())
     finally:
         hb.stop()
         await task

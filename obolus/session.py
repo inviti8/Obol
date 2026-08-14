@@ -63,7 +63,7 @@ def vault_status(cfg: Config) -> VaultStatus:
         )
     elif not state.opted_in:
         step, message = 2, (
-            f"Opt the vault into ASA {asset}: run `obol vault optin`. Until then "
+            f"Opt the vault into ASA {asset}: run `obolus vault optin`. Until then "
             "any USDC sent here is REJECTED, not held."
         )
     elif state.asset_micro == 0:
@@ -115,7 +115,7 @@ def open_session(cfg: Config, balance_micro: int) -> tuple[SessionRecord, str]:
     if live := ledger.live_sessions():
         raise WalletError(
             f"Session {live[0].index} ({live[0].address}) is still live. Close it "
-            "or run `obol reap` first - v1 runs one session at a time."
+            "or run `obolus reap` first - v1 runs one session at a time."
         )
 
     cli = algorand.client(cfg.network)
@@ -123,7 +123,7 @@ def open_session(cfg: Config, balance_micro: int) -> tuple[SessionRecord, str]:
     state = algorand.account_state(cli, vault.address, asset)
     if not state.opted_in:
         raise WalletError(
-            f"Vault is not opted into ASA {asset}. Run `obol vault` for the "
+            f"Vault is not opted into ASA {asset}. Run `obolus vault` for the "
             "bootstrap steps - a session cannot return its balance to a vault that "
             "cannot receive it."
         )
@@ -170,7 +170,7 @@ def live_session(cfg: Config) -> tuple[Key, SessionRecord, Ledger]:
     live = [s for s in ledger.live_sessions() if s.state == "open"]
     if not live:
         raise WalletError(
-            "No open session. Run `obol session open --balance <amount>` first.\n"
+            "No open session. Run `obolus session open --balance <amount>` first.\n"
             "A session is what bounds the loss: payments spend from it, never from "
             "the vault."
         )
