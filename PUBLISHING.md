@@ -4,50 +4,65 @@ Brief for whoever runs the release. Needed on **every version bump**, not just t
 first one — the Registry stores metadata only, and that metadata carries a version
 that must match what is on PyPI.
 
-## READ THIS FIRST — there is a version mismatch right now
-
-Measured 2026-08-14:
-
-```
-pyproject.toml   0.2.1
-server.json      0.2.1   (both `version` and `packages[0].version`)
-PyPI obolus      0.2.0    <-- the only published release
-```
-
-**Publishing in this state fails no matter what, and the error will look like an
-auth problem.** The Registry resolves `packages[0].version` against PyPI to prove
-the package exists and is yours; 0.2.1 is not there.
-
-Pick one before doing anything else:
-
-- **Release 0.2.1 to PyPI** (`uv build && uv publish`), then publish to the
-  Registry. Preferred if 0.2.1 contains real changes.
-- **Or set both version fields in `server.json` back to `0.2.0`** and register the
-  release that actually exists. `pyproject.toml` can stay at 0.2.1 as the
-  in-progress version.
-
-Then re-check with the command in [Gotchas](#gotchas-that-fail-the-submission).
+**Since 0.2.2 this is automated.** `.github/workflows/release.yml` has a
+`registry` job that publishes on every `v*` tag using GitHub Actions OIDC. The
+manual steps below are the fallback, and the explanation of what the automation
+is doing. Reach for them when the job fails or when you are publishing outside a
+tag.
 
 ## State as of 2026-08-14
 
 | Thing | Status |
 |---|---|
-| PyPI `obolus` 0.2.0 | **live** |
-| `mcp-name: io.github.inviti8/obolus` in the published PyPI description | **present** — this is the ownership proof |
-| `server.json` schema validity, name, title, package identifier `obolus` | **valid** against the 2025-12-11 schema |
-| `server.json` version vs PyPI | **MISMATCHED** — see above |
+| PyPI `obolus` | **live**, 0.2.2 |
+| `mcp-name: io.github.inviti8/obolus` in the published PyPI description | **present**, verified against the live JSON API — this is the ownership proof |
+| `server.json` validity, name, title, identifier `obolus` | **valid** against the 2025-12-11 schema, checked with `mcp-publisher validate` |
+| `server.json` version vs PyPI | **aligned**, and `tests/test_packaging.py` now fails the build if they drift |
+| Launch command reaches a server | **fixed in 0.2.2** — see the next section |
 | GitHub repo `inviti8/Obolus` | **renamed**, matches `repository.url` |
-| MCP Registry entry | **MISSING** — this document exists to fix that |
+| Automated publish on tag | **in `release.yml`** |
+| MCP Registry entry | see "Verify" below |
 
-Everything except the version mismatch and the Registry entry is done. Do not
-re-do them.
+## The thing that nearly shipped a dead listing
+
+A client builds its launch command from the PyPI distribution name. For us that
+is `uvx obolus` — and `obolus` is the **CLI**, not the server. Measured:
+
+```
+$ uvx obolus
+usage: obolus [-h] [--network {mainnet,testnet}] {vault,session,fetch,sessions,reap,mcp} ...
+obolus: error: the following arguments are required: command
+```
+
+The process exits immediately. To an MCP client that is indistinguishable from a
+server that crashed on startup, and the Registry entry would have installed
+cleanly while never once working. Nothing in the schema, `mcp-publisher validate`
+or the Registry's own checks catches this — all of them verify that the *package*
+exists, not that the *command* serves.
+
+Two things fix it, and both are needed:
+
+- `obolus mcp` is a real subcommand (0.2.2), sharing one code path with the
+  `obolus-mcp` script via `serve(cfg)` in `obolus/mcp/server.py`.
+- `server.json` carries `packageArguments: [{"type": "positional", "value": "mcp"}]`,
+  so the command a client assembles is `uvx obolus mcp`.
+
+`tests/test_packaging.py::test_registry_package_arguments_are_real_cli_commands`
+asserts every positional in `server.json` is a subcommand the CLI actually has.
+Without it, renaming or dropping the verb would break the Registry entry silently
+— nothing else in the build would notice.
+
+**If you change the entry point, re-prove it end to end**, not by reading. Do a
+real `initialize` + `tools/list` over stdio against the exact command the entry
+names. A server that starts and hangs looks identical to a working one until a
+client speaks to it.
 
 ## The goal
 
 `io.github.inviti8/obolus` resolvable at
 `https://registry.modelcontextprotocol.io/v0/servers?search=obolus`.
 
-## Steps
+## Manual steps (the fallback)
 
 ### 1. Install `mcp-publisher`
 
@@ -88,6 +103,9 @@ looks identical to a hang — it isn't.
 GitHub auth is what grants the `io.github.inviti8/*` namespace. It must be the
 `inviti8` account; any other account is rejected for this name.
 
+*(CI uses `mcp-publisher login github-oidc` instead. Do not put `login github` in
+a workflow — it will sit waiting for a human who is not there.)*
+
 ### 3. Validate, then publish
 
 ```bash
@@ -112,12 +130,17 @@ work: `?search=obol` returns the unrelated `dev.fly.obol-x402/obol`.
 ## Gotchas that fail the submission
 
 - **Version drift.** `server.json` `version` *and* `packages[0].version` must both
-  equal a version that is live on PyPI. This is currently broken — see the top of
-  this file. Check before every publish:
+  equal a version that is live on PyPI, or the Registry rejects the submission
+  with what reads like an auth error. `tests/test_packaging.py` now enforces the
+  local half of this; the PyPI half is checked by the workflow, which waits for
+  the new version to appear before publishing. By hand:
 
   ```bash
   python -c "import json,urllib.request;s=json.load(open('server.json'));p=json.load(urllib.request.urlopen('https://pypi.org/pypi/obolus/json'));print('server.json',s['version'],s['packages'][0]['version'],'| pypi',p['info']['version'])"
   ```
+- **PyPI is not instantly consistent.** The JSON API can still serve the previous
+  version for a few seconds after `uv publish` returns. Publishing to the Registry
+  immediately can therefore fail against a version that genuinely exists.
 - **The ownership marker lives on PyPI, not in the repo.** The Registry fetches
   the package description from PyPI and looks for `mcp-name: io.github.inviti8/obolus`.
   Editing `README.md` locally changes nothing until a release is published to
@@ -127,6 +150,9 @@ work: `?search=obol` returns the unrelated `dev.fly.obol-x402/obol`.
 - **The marker needs a boundary after it** — newline, whitespace, or `-->`. Gluing
   it to a trailing period breaks the match. It is currently on its own line at the
   top of `README.md`; leave it there.
+- **A valid entry is not a working one.** See "the thing that nearly shipped a
+  dead listing" above. Validation proves the package exists; only a handshake
+  proves the command serves.
 
 ## Links
 

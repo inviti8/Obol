@@ -12,6 +12,7 @@ from a wheel, where neither file ships.
 
 from __future__ import annotations
 
+import argparse
 import json
 import tomllib
 from pathlib import Path
@@ -47,6 +48,38 @@ def test_server_json_matches_pyproject():
     assert pkg["identifier"] == tomllib.loads(
         PYPROJECT.read_text(encoding="utf-8")
     )["project"]["name"]
+
+
+@needs_source_tree
+def test_registry_package_arguments_are_real_cli_commands():
+    """The Registry launch command must reach a server, not the CLI's usage error.
+
+    A client builds its command from the PyPI distribution name: `uvx obolus`.
+    That runs the `obolus` console script, which is the CLI - bare, it exits 2
+    with "the following arguments are required: command". The listing would
+    install cleanly and present as a server that dies on startup.
+
+    server.json therefore carries `packageArguments: ["mcp"]`. This checks that
+    every positional it names is a subcommand the CLI actually has, because the
+    failure is silent: nothing in a normal test run or a release would notice
+    the entry pointing at a verb that no longer exists.
+    """
+    from obolus.cli import build_parser
+
+    server = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
+    pkg = next(p for p in server["packages"] if p["registryType"] == "pypi")
+    positionals = [
+        a["value"] for a in pkg.get("packageArguments", [])
+        if a.get("type") == "positional" and "value" in a
+    ]
+    assert positionals, "server.json must pass a subcommand, or uvx runs the CLI"
+
+    subparsers = next(
+        a.choices for a in build_parser()._actions  # noqa: SLF001
+        if isinstance(a, argparse._SubParsersAction)  # noqa: SLF001
+    )
+    for value in positionals:
+        assert value in subparsers, f"server.json launches `obolus {value}`, which does not exist"
 
 
 @needs_source_tree

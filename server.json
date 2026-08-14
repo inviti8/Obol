@@ -7,15 +7,23 @@
     "url": "https://github.com/inviti8/Obolus",
     "source": "github"
   },
-  "version": "0.2.1",
+  "version": "0.2.2",
   "packages": [
     {
       "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
       "identifier": "obolus",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "transport": {
         "type": "stdio"
       },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "description": "Serve MCP on stdio. Required: a client builds its launch command from the package name, and bare `obolus` is the CLI, which exits with a usage error instead of speaking MCP."
+        }
+      ],
       "environmentVariables": [
         {
           "name": "OBOLUS_NETWORK",

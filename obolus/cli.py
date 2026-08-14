@@ -10,6 +10,7 @@ whether the vault is on bootstrap step 1 or the session never closed.
     obolus session close             close it and sweep back
     obolus sessions                  what the ledger believes
     obolus reap                      sweep anything a crash left behind
+    obolus mcp                       serve MCP on stdio (same as `obolus-mcp`)
 
 Every command takes `--network`, defaulting to testnet.
 """
@@ -301,6 +302,25 @@ def cmd_address(cfg: Config, args) -> int:
     return 0
 
 
+def cmd_mcp(cfg: Config, args: argparse.Namespace) -> int:
+    """Serve MCP on stdio, the same as the `obolus-mcp` script.
+
+    This exists for one reason. An MCP Registry entry names a PyPI distribution,
+    and a client builds its launch command from that name: `uvx obolus`. That
+    runs *this* console script, not `obolus-mcp`, and bare `obolus` exits with a
+    usage error - so the registry listing would install cleanly and then present
+    as a server that dies on startup. `uvx obolus mcp` is the command the
+    registry entry actually asks for, and this is what makes it work.
+
+    Imported here rather than at module scope: the CLI is used for support on
+    machines where the MCP stack may not matter, and this keeps its startup and
+    its failure modes off the common path.
+    """
+    from .mcp.server import serve
+
+    return serve(cfg)
+
+
 def build_parser() -> argparse.ArgumentParser:
     # Raw, because the module docstring above is a command table. argparse's
     # default formatter reflows it into one paragraph, which turns the only
@@ -360,6 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
         fn=cmd_sessions
     )
     sub.add_parser("reap", help="sweep orphaned sessions").set_defaults(fn=cmd_reap)
+    sub.add_parser("mcp", help="run the MCP server on stdio").set_defaults(fn=cmd_mcp)
     return ap
 
 

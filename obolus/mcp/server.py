@@ -28,6 +28,7 @@ from contextlib import asynccontextmanager
 
 from mcp.server.mcpserver import MCPServer
 
+from .. import __version__
 from ..config import Config, load_config
 from .tools import register
 from .wallet import Wallet
@@ -66,7 +67,10 @@ def build_server(cfg: Config) -> MCPServer:
     server = MCPServer(
         name="obolus",
         title="Obolus - x402 wallet",
-        version="0.1.0",
+        # From the package, not a literal. This is what every connected client
+        # sees in the handshake and quotes in a bug report; hardcoded, it went
+        # on saying 0.1.0 through two releases.
+        version=__version__,
         instructions=INSTRUCTIONS,
         lifespan=lifespan,
     )
@@ -74,23 +78,33 @@ def build_server(cfg: Config) -> MCPServer:
     return server
 
 
-def main() -> int:
+def serve(cfg: Config) -> int:
+    """Run the stdio server against an already-resolved config.
+
+    Split out from `main` so `obolus mcp` and the `obolus-mcp` script are the
+    same code path rather than two that drift. The CLI route matters because it
+    is what `uvx obolus mcp` reaches - see the note on `cmd_mcp` in cli.py.
+    """
     logging.basicConfig(
         level=logging.INFO,
         stream=sys.stderr,  # stdout is the MCP transport; anything on it corrupts the protocol
         format="%(levelname)s %(name)s: %(message)s",
     )
-    cfg = load_config()
     if cfg.network.is_mainnet:
         log.warning("MAINNET - x402_fetch will spend real money")
     log.info(
-        "obolus mcp: network=%s asset=%s data=%s",
+        "obolus mcp %s: network=%s asset=%s data=%s",
+        __version__,
         cfg.network.name,
         cfg.network.payment_asa,
         cfg.data_dir,
     )
     build_server(cfg).run("stdio")
     return 0
+
+
+def main() -> int:
+    return serve(load_config())
 
 
 if __name__ == "__main__":
