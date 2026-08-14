@@ -722,7 +722,9 @@ one screen.
    Authen booted on loopback, on testnet.
 4. Spend caps, the §7 refusals, and the consent model.
 5. Wrap in an MCP server; verify against a real MCP client.
-6. **The first mainnet payment, made by Obolus**, against `authen.hvym.link`.
+6. ~~**The first mainnet payment, made by Obolus**, against `authen.hvym.link`.~~
+   **Done 2026-08-13/14** — three settlements, agent-driven over MCP. See
+   `CLAUDE.md` and `D:/authen_mainnet_launch/RUNLOG.md`.
 7. LogicSig facilitator probe on testnet (§6). Cheap, permanent, and blocks
    nothing — §6 recommends deferring the policy build regardless. Do it whenever
    there is an idle afternoon.

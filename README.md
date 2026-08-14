@@ -170,6 +170,16 @@ was correct, honest, or worth its price.
 
 ## Status
 
-Working on testnet: payments settle, sessions open and sweep themselves, and an
-unclean exit is recovered on the next start. The first mainnet payment is the
-next milestone.
+**Working on mainnet.** On 2026-08-13 and 08-14 an agent used Obolus over MCP to
+buy three resources from a live merchant with real USDC — a notarisation at
+$0.05, a second at $0.05, and a C2PA signature over a 13 MB TIFF at $0.15. Each
+payment came from a disposable session account that was derived, funded, spent
+and swept closed; two sessions, both reconciled, nothing stranded. All three
+settlements landed with `fee: 0`, sponsored by the facilitator, as designed.
+
+What that demonstrates is the rail, end to end: an agent with no human in the
+loop held a key, answered a `402`, and got the bytes. It does not say the
+resources were worth their price — settlement proves settlement and nothing more.
+
+Testnet remains the default and the place to develop. Mainnet is guarded, never
+disabled.

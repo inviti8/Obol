@@ -449,9 +449,20 @@ a real merchant, with money it was given once and provisioned none of.
 **Done when:** a settled mainnet txid, an attestation that verifies offline, and
 a vault balance that reconciles to the microunit.
 
-**Deadline interaction:** if this is not comfortably reachable by **2026-08-28**,
+**DONE, 2026-08-13/14.** All three criteria met, three times over: settled txids
+`YC3JCYIY…`, `HHUR6UUD…` and `7C457WXN…`; both attestations verify against the
+independently published identity key, over digests computed locally before the
+bytes were sent; two sessions opened, spent and swept, ledger reconciling to the
+microunit. Driven by an agent through `x402_fetch` over MCP rather than the CLI —
+which makes it Phase 4's claim proved on mainnet, not merely Phase 5's.
+
+The deadline interaction below is moot; the backstop was never run. Record in
+`D:/authen_mainnet_launch/RUNLOG.md`, including the first attempt, which failed
+`unreachable` while the node was down and correctly spent nothing.
+
+~~**Deadline interaction:** if this is not comfortably reachable by **2026-08-28**,
 run `D:/repos/Authen/tools/pay_mainnet.py --pay --confirm` to close the gate and
-let Obolus take the second payment. The gate is Authen's, not Obolus's, and Obolus must
+let Obolus take the second payment.~~ The gate is Authen's, not Obolus's, and Obolus must
 never be the reason it slips.
 
 ### Phase 6 — v1.1 funding paths

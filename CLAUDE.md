@@ -121,21 +121,42 @@ natively, which is otherwise the weak point in Obolus's unlinkability story.
 One Ed25519 key is simultaneously a Stellar and an Algorand address, so the key
 layer is already chain-agnostic. It is the payment protocol that differs.
 
-## The near-term goal, and the deadline that is not ours
+## Mainnet is done — 2026-08-13/14
 
-**Obolus should make its own first mainnet payment**, against the live Authen node
-at `https://authen.hvym.link/api/v1/notarize` ($0.05, ASA `31566704`, tag
-`x402-global-challenge`). A wallet whose first act is a real purchase from a real
-merchant is the demo.
+**Obolus made its own first mainnet payments, and the backstop was never used.**
+Three settlements against the live Authen node, all driven by an agent calling
+`x402_fetch` over MCP, not by the CLI and not by `tools/pay_mainnet.py`:
 
-Authen has a hard competition gate of **2026-09-01, 11:45pm EST** requiring one
-real settled mainnet payment. That gate is **already closable without Obolus** —
-`D:/repos/Authen/tools/pay_mainnet.py --pay --confirm` is finished and
-preflighted. Obolus is the preferred route, never the dependency. If Obolus is not
-ready by roughly 2026-08-28, close the gate with the backstop and let Obolus take
-the second payment.
+| When (UTC) | Resource | Amount | Session | Txid |
+|---|---|---:|---|---|
+| 2026-08-13 23:27 | `/api/v1/notarize` | $0.05 | 1 · `IBDY7UHB…HIE55A` | `YC3JCYIY…VMCDQ` |
+| 2026-08-14 03:27 | `/api/v1/notarize` | $0.05 | 2 · `HR4GEKYB…ILZEHU` | `HHUR6UUD…WH7TA` |
+| 2026-08-14 03:34 | `/api/v1/c2pa/sign` | $0.15 | 2 · `HR4GEKYB…ILZEHU` | `7C457WXN…4YFMQ` |
 
-**Development happens on testnet.** Mainnet is guarded, not disabled.
+Both sessions opened, spent and swept closed; the ledger reconciles against the
+chain. **Every settlement landed with `fee: 0`** — the facilitator sponsorship
+claimed in §"Hard-won facts" now holds on mainnet, not just testnet.
+
+The competition gate is closed. Authen appears on the facilitator leaderboard at
+rank 48 of **97** mainnet merchants, `challenge: true`, 3 settles / 5 verifies /
+$0.25 volume. The 2026-09-01 deadline and the 08-28 fallback date are both moot.
+
+Not closed, and **not ours to fix**: Authen is still `bazaar: false` and absent
+from the discovery catalog. The facilitator admitted no new resource *from any
+merchant* in the ~12 h spanning the first payment, so this is not caused by
+Authen's declaration. Do not re-point `resourceUrl` to try to force it — the
+catalog is permanent and the leaderboard aggregates by payTo, so a second URL
+fragments the entry instead of repairing it.
+
+**The full record is `D:/authen_mainnet_launch/RUNLOG.md`**, with the API-level
+analysis in `AUTHEN_API_REPORT.md` beside it. Read the run log before re-deriving
+anything about the facilitator: it corrects two things this file got wrong. The
+`/data/merchants` and `/data/leaderboards` endpoints **hard-cap at 50 rows
+whatever `limit` says**, with no truncation signal — read `total`, or paginate
+with `offset`, or you will silently ask a narrower question than you think. And a
+POST resource must declare `bodyType`, not `queryParams`, to be cataloged at all.
+
+**Development still happens on testnet.** Mainnet is guarded, not disabled.
 
 **Renamed Obol -> Obolus, 2026-08-14.** Three unrelated projects shipped as
 "Obol" in this exact market: obol.sh (an x402 developer platform on Base),
