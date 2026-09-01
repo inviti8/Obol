@@ -148,6 +148,11 @@ def cmd_fetch(cfg: Config, args) -> int:
     elif args.body is not None:
         body = args.body.encode()
 
+    # A paid endpoint verifies the payment before its handler runs, so one that
+    # requires a Content-Type rejects AFTER the money has moved. There was no way
+    # to set it here at all, which made `--body '{"a":1}'` a way to pay for a 415.
+    headers = {"Content-Type": args.content_type} if args.content_type else None
+
     max_price = (
         cfg.network.to_units(args.max_price) if args.max_price is not None else None
     )
@@ -160,6 +165,7 @@ def cmd_fetch(cfg: Config, args) -> int:
                 args.url,
                 method=args.method,
                 body=body,
+                headers=headers,
                 max_price_micro=max_price,
                 our_addresses={vault.address},
                 spend=spend,
@@ -369,6 +375,9 @@ def build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--method", default="GET")
     fetch.add_argument("--body", default=None, help="request body as text")
     fetch.add_argument("--body-file", default=None, help="request body from a file")
+    fetch.add_argument(
+        "--content-type", default=None, help="request Content-Type, e.g. application/json"
+    )
     fetch.add_argument(
         "--max-price", type=float, default=None, help="refuse above this, in whole units"
     )

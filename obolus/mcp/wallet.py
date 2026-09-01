@@ -24,6 +24,7 @@ problem, it bounds it.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -65,6 +66,40 @@ class SessionHandle:
     key: Key
     record: SessionRecord
     ledger: Ledger
+
+
+def encode_body(
+    body: str | dict[str, Any] | list[Any], content_type: str | None
+) -> tuple[bytes, str | None]:
+    """Turn a tool-supplied body into request bytes, and label it if we made it.
+
+    `body` accepts an object, not only a string, and it has to. The MCP framework
+    pre-parses any string argument whose annotation is not *exactly* `str` - see
+    `pre_parse_json` in `mcp.server.mcpserver` - so a caller passing the obvious
+    thing, `body='{"a":1}'`, had the string turned into a dict before any of our
+    code saw it, and pydantic then rejected the dict as "not a valid string".
+    JSON is the most common paid-endpoint body type and the parameter for it
+    refused it. Measured against a live $0.25 endpoint on 2026-09-01, where
+    `body_file` was the only way through.
+
+    A string is passed through untouched, so text, XML and form encoding still
+    reach the wire byte for byte. An object cannot be: separators are pinned so
+    the output is at least reproducible, but whitespace and key order are
+    `json.dumps`'s. If the exact bytes matter - anything the endpoint hashes or
+    signs over - `body_file` is never parsed or re-encoded.
+
+    The Content-Type is set here rather than left to the caller because getting it
+    wrong is charged for. A paid endpoint verifies payment before its handler
+    runs, so one that requires the header rejects AFTER the money has moved. An
+    object body has exactly one honest media type; a caller who names another
+    keeps it.
+    """
+    if isinstance(body, str):
+        return body.encode(), content_type
+    return (
+        json.dumps(body, separators=(",", ":")).encode(),
+        content_type or "application/json",
+    )
 
 
 class Wallet:
@@ -395,7 +430,7 @@ class Wallet:
         self,
         url: str,
         method: str = "GET",
-        body: str | None = None,
+        body: str | dict[str, Any] | list[Any] | None = None,
         max_price_micro: int | None = None,
         body_file: str | None = None,
         output_file: str | None = None,
@@ -409,7 +444,7 @@ class Wallet:
         if body_file is not None:
             payload = await asyncio.to_thread(read_body, self.cfg.file_root, body_file)
         elif body is not None:
-            payload = body.encode()
+            payload, content_type = encode_body(body, content_type)
         # An output path is validated up front too, so a doomed write is not
         # discovered after a payment has already settled.
         if output_file is not None:

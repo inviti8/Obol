@@ -110,6 +110,21 @@ This is why ~13% of the live index is `localhost` and `127.0.0.1` junk. It
 matters less for a client than a server, but never point test traffic at a URL
 you do not intend to keep.
 
+## One hard-won fact about the MCP layer
+
+**A tool parameter annotated `str | None` cannot receive a JSON string.** The
+framework's `pre_parse_json` runs `json.loads` on every string argument whose
+annotation is not *exactly* `str`, to help clients that stringify objects. So
+`x402_fetch(body='{"a":1}')` arrived as a dict and pydantic rejected it as "not a
+valid string" - the obvious call, for the commonest paid-endpoint body type, was
+the one that could not be made. Found on 2026-09-01 against a live $0.25 endpoint
+(`D:/authen_mainnet_launch/RUNLOG.md`), where `body_file` was the only way through.
+
+`body` is therefore `str | dict | list | None`, and objects are serialised and
+labelled `application/json` in `encode_body`. **Do not narrow it back.** The same
+quirk also turns `body="null"` into no body at all, silently - there is no
+annotation that avoids that while still accepting objects.
+
 ## Chain scope
 
 **Algorand only for v1.** Stellar is deferred, not dropped —

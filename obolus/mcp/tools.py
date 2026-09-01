@@ -53,6 +53,12 @@ would swamp the conversation. Both are confined to a directory the user
 configured, and both are DISABLED unless they configured one; a path outside it
 is refused. Pass `body` or `body_file`, never both.
 
+JSON. Pass `body` as an object or array, not as a string of JSON - it is sent as
+`application/json` and you do not need to set `content_type`. A string `body` is
+sent verbatim, which is what you want for text, XML or form encoding. If the exact
+bytes matter - anything the endpoint hashes or signs over - use `body_file`, which
+is never re-encoded.
+
 `content_type` sets the request's Content-Type. Some paid endpoints require it
 and reject the request without it - AFTER taking payment, because the payment is
 verified before the handler runs. Set it whenever the body is not plain text.
@@ -113,7 +119,7 @@ def register(server: Any, wallet: Wallet) -> None:
     async def x402_fetch(
         url: str,
         method: str = "GET",
-        body: str | None = None,
+        body: str | dict[str, Any] | list[Any] | None = None,
         max_price_usdc: float | None = None,
         body_file: str | None = None,
         output_file: str | None = None,
